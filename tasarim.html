@@ -49,7 +49,8 @@
         .kpi-card { background: #1f1f1f; flex: 1; padding: 20px; border-radius: 10px; text-align: center; border-top: 4px solid #00d4ff; }
         .kpi-val { font-size: 30px; font-weight: bold; display: block; margin-top: 5px; }
         
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; position: relative; z-index: 1; }
+        /* DEĞİŞİKLİK BURADA: grid-template-columns: 1fr yapıldı (Tek sütun, alt alta) */
+        .grid { display: grid; grid-template-columns: 1fr; gap: 30px; position: relative; z-index: 1; }
         .chart-box { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #333; height: 500px; }
 
         /* SİMÜLASYON STİLLERİ */
@@ -282,17 +283,14 @@
             event.stopPropagation();
         }
 
-        // --- VERİ İŞLEME (GİZLEME DÜZELTİLDİ: TÜM SÜTUNLARA BAK) ---
+        // --- VERİ İŞLEME ---
         function processData() {
-            // Ham veride olmayan grup elemanlarını temizle
             const availableModels = new Set(rawData.map(d => d["Model"]));
             for(let gName in globalGroups["Model"]) {
                 globalGroups["Model"][gName] = globalGroups["Model"][gName].filter(m => availableModels.has(m));
             }
 
             cleanData = rawData.filter(d => {
-                // HATA DÜZELTME: Sadece Model'e değil, ana sütunların hepsine bak.
-                // Eğer herhangi bir sütundaki veri "hiddenItems" içindeyse o satırı sil.
                 const keysToCheck = ["Model", "Danışman Adı", "Durum", "Kayıp Nedeni", "Lead Kaynağı"];
                 for(let key of keysToCheck) {
                     if(d[key] && hiddenItems.includes(d[key].toString().trim())) return false;
@@ -300,7 +298,6 @@
                 return true;
             }).map(d => {
                 let row = {...d};
-                // Grupları uygula
                 for (let cat in globalGroups) {
                     if (globalGroups[cat]) {
                         for (let gName in globalGroups[cat]) {
@@ -381,16 +378,42 @@
             document.getElementById("k-ora").innerText = "%" + (filtered.length > 0 ? (nSat/filtered.length*100).toFixed(1) : 0);
             renderCharts(filtered);
         }
+
         function renderCharts(data) {
-            function getDynamicMargin(labels) { if(!labels || labels.length === 0) return 100; const maxLen = labels.reduce((a, b) => Math.max(a, b.length), 0); return Math.max(100, maxLen * 7); }
-            const baseLayout = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'white'}, margin:{t:40,l:40,r:20} };
-            const models = [...new Set(data.map(d => d.Model))]; const marginB = getDynamicMargin(models);
+            // Dinamik margin fonksiyonu
+            function getDynamicMargin(labels) { if(!labels || labels.length === 0) return 100; const maxLen = labels.reduce((a, b) => Math.max(a, b.length), 0); return Math.max(100, maxLen * 8); }
+            const baseLayout = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'white'}, margin:{t:40,l:40,r:20, b:50} };
+            
+            // --- MODEL GRAFİĞİ (DEĞİŞTİ: YATAY OLDU) ---
+            const models = [...new Set(data.map(d => d.Model))]; 
+            const marginModel = getDynamicMargin(models); // Soldan margin hesapla (isim uzunluğuna göre)
             const satisData = models.map(m => data.filter(d => d.Model === m && d.Durum === "Satış").length);
             const digerData = models.map(m => data.filter(d => d.Model === m && d.Durum !== "Satış").length);
-            Plotly.newPlot('c-model', [{ x: models, y: satisData, name: 'Satış', type: 'bar', marker:{color:'#2ecc71'} }, { x: models, y: digerData, name: 'Diğer', type: 'bar', marker:{color:'#e74c3c'} }], { ...baseLayout, title: 'Model Performansı', barmode:'stack', margin:{b: marginB} });
-            const d1 = count(data, "Durum"); Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...baseLayout, title: 'Satış Durumu' });
-            const kData = count(data.filter(d => d.Durum !== "Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni"); Plotly.newPlot('c-kayip', [{ x: Object.keys(kData), y: Object.values(kData), type: 'bar', marker:{color: '#f1c40f'} }], { ...baseLayout, title: 'Kayıp Nedenleri' });
-            const lData = count(data, "Lead Kaynağı"); const marginL = getDynamicMargin(Object.keys(lData)); Plotly.newPlot('c-lead', [{ x: Object.keys(lData), y: Object.values(lData), type: 'bar', marker:{color: '#9b59b6'} }], { ...baseLayout, title: 'Lead Kaynağı', margin:{b: marginL} });
+            
+            Plotly.newPlot('c-model', [
+                { x: satisData, y: models, name: 'Satış', type: 'bar', orientation: 'h', marker:{color:'#2ecc71'} }, 
+                { x: digerData, y: models, name: 'Diğer', type: 'bar', orientation: 'h', marker:{color:'#e74c3c'} }
+            ], { 
+                ...baseLayout, 
+                title: 'Model Performansı', 
+                barmode:'stack', 
+                // ÖNEMLİ: Margin-Left (l) artık dinamik, çünkü yazılar solda.
+                margin:{ l: marginModel, r:20, t:40, b:20 } 
+            });
+
+            // --- DURUM PASTA GRAFİĞİ (Değişmedi) ---
+            const d1 = count(data, "Durum"); 
+            Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...baseLayout, title: 'Satış Durumu' });
+            
+            // --- KAYIP NEDENLERİ (Alt alta olduğu için margin-bottom önemli) ---
+            const kData = count(data.filter(d => d.Durum !== "Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni"); 
+            const marginKayip = getDynamicMargin(Object.keys(kData));
+            Plotly.newPlot('c-kayip', [{ x: Object.keys(kData), y: Object.values(kData), type: 'bar', marker:{color: '#f1c40f'} }], { ...baseLayout, title: 'Kayıp Nedenleri', margin: { b: marginKayip, l: 40, r: 20, t: 40 } });
+            
+            // --- LEAD KAYNAĞI ---
+            const lData = count(data, "Lead Kaynağı"); 
+            const marginLead = getDynamicMargin(Object.keys(lData)); 
+            Plotly.newPlot('c-lead', [{ x: Object.keys(lData), y: Object.values(lData), type: 'bar', marker:{color: '#9b59b6'} }], { ...baseLayout, title: 'Lead Kaynağı', margin:{ b: marginLead, l: 40, r: 20, t: 40 } });
         }
         function count(data, key) { const c = {}; data.forEach(d => c[d[key]] = (c[d[key]] || 0) + 1); return c; }
 
