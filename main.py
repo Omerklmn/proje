@@ -30,8 +30,8 @@ def get_image_data(filename):
             pass
     return "https://via.placeholder.com/300x200?text=Gorsel+Yok"
 
-# --- DOSYA SEÇİM MEKANİZMASI (GÜNCELLENDİ: Hatırlama Özelliği) ---
-CONFIG_FILE = "settings.json"
+# --- DOSYA SEÇİM MEKANİZMASI (GÜNCELLENDİ: İSTEK 1) ---
+CONFIG_FILE = "ayarlar.json"
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
@@ -56,14 +56,14 @@ def get_excel_file():
     config = load_config()
     last_file = config.get("last_file")
 
-    # 1. Eğer kayıtlı dosya varsa ve dosya yerinde duruyorsa sor
+    # İSTEK 1: Son dosya varsa sor
     if last_file and os.path.exists(last_file):
-        msg = f"Son kullanılan dosya bulundu:\n{last_file}\n\nBu dosya ile devam etmek ister misiniz?\n(Hayır derseniz yeni dosya seçebilirsiniz)"
+        msg = f"Son kullanılan dosya bulundu:\n{last_file}\n\nBu dosya ile devam etmek ister misiniz?\n('Hayır' derseniz yeni dosya seçebilirsiniz)"
         response = messagebox.askyesno("Dosya Seçimi", msg)
         if response:
             return last_file
     
-    # 2. Kayıtlı dosya yoksa veya kullanıcı 'Hayır' dediyse seçtir
+    # Kayıtlı dosya yoksa veya kullanıcı değiştirmek isterse
     messagebox.showinfo("Dosya Seçimi", "Lütfen analiz edilecek Excel dosyasını seçin.")
     file_path = filedialog.askopenfilename(title="Excel Dosyası Seç", filetypes=[("Excel Dosyaları", "*.xlsx;*.xls")])
     
@@ -102,7 +102,6 @@ def main():
         # Tasarımı Okuma
         template_path = resource_path("tasarim.html")
         if not os.path.exists(template_path):
-             # Eğer exe dışındaysa (geliştirme ortamı)
              template_path = "tasarim.html"
 
         with open(template_path, "r", encoding="utf-8") as f:
