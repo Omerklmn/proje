@@ -1,0 +1,35 @@
+name: EXE Yapici
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Python Kur
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Kütüphaneleri Yükle
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: EXE Oluştur
+      run: |
+        # --noconsole parametresini KALDIRDIM ki hata olursa siyah ekranda görebilelim.
+        # İstersen --noconsole ekleyebilirsin ama ilk denemede kaldırmak iyidir.
+        pyinstaller --onefile --name "SatisPaneli" main.py
+
+    - name: İndirilebilir Yap (Artifact)
+      uses: actions/upload-artifact@v4
+      with:
+        name: SatisPaneli-EXE
+        path: dist/SatisPaneli.exe
