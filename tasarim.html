@@ -48,13 +48,13 @@
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .chart-box { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #333; height: 500px; }
 
-        /* SİMÜLASYON STİLİ */
+        /* SİMÜLASYON STİLİ (İSTEK 5) */
         .sim-container { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 50px; }
-        .sim-title { font-size: 24px; margin-bottom: 30px; color: #00d4ff; }
+        .sim-title { font-size: 24px; margin-bottom: 30px; color: #00d4ff; text-align: center; }
         .consultant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; width: 100%; max-width: 1000px; }
-        .consultant-btn { background: #1f1f1f; border: 1px solid #333; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; transition: 0.3s; font-size: 16px; color: white; }
+        .consultant-btn { background: #1f1f1f; border: 1px solid #333; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; transition: 0.3s; font-size: 16px; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .consultant-btn:hover { background: #333; border-color: #00d4ff; transform: translateY(-5px); }
-        .consultant-btn i { font-size: 30px; margin-bottom: 10px; color: #aaa; display: block; }
+        .consultant-btn i { font-size: 30px; margin-bottom: 10px; color: #aaa; }
 
         /* AYAR BUTONU */
         .floating-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 999; transition: transform 0.2s; box-shadow: 0 0 15px rgba(0,0,0,0.5); background: #00d4ff; }
@@ -201,7 +201,7 @@
         let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
         let currentFilteredData = []; 
 
-        // --- VERİ TEMİZLİĞİ VE İŞLEME ---
+        // --- İSTEK 2: VERİ TEMİZLİĞİ ---
         function cleanGroupsAgainstData() {
             // Ham verideki tüm benzersiz değerleri bul
             const uniqueValues = {
@@ -222,13 +222,12 @@
                 for (let groupName in groups) {
                     // Gruptaki her bir öğeyi kontrol et
                     const originalLength = groups[groupName].length;
+                    // Eğer öğe yeni veride yoksa gruptan çıkar
                     groups[groupName] = groups[groupName].filter(item => uniqueValues[category].has(item));
                     
                     if (groups[groupName].length !== originalLength) {
                         hasChanges = true;
                     }
-                    // Eğer grup boşaldıysa grubu silme, belki kullanıcı adını tutmak ister.
-                    // Ama içi boş kalacak.
                 }
             }
 
@@ -249,7 +248,7 @@
         function processData() {
             if(rawData.length === 0) return;
             
-            // Önce grupları temizle (Yeni dosya için)
+            // Temizliği çalıştır
             cleanGroupsAgainstData();
 
             cleanData = rawData.map(d => {
@@ -294,7 +293,8 @@
             
             processData(); // Verileri gruplanmış haliyle hazırla
             
-            // Danışman Listesini Hazırla
+            // İSTEK 5: DANIŞMAN LİSTESİ
+            // Hem temizlenmiş (gruplanmış) veriden hem de benzersiz olarak çekiyoruz
             const consultantList = [...new Set(cleanData.map(d => d["Danışman Adı"]))].sort();
             const container = document.getElementById("sim-consultant-list");
             container.innerHTML = "";
@@ -422,7 +422,7 @@
         function getSelected(listId) { return Array.from(document.querySelectorAll(`.item-check-${listId}:checked`)).map(i => i.value); }
         function updateBtnText(btnId, selected, label) { const btn = document.getElementById(btnId); const total = document.getElementsByClassName(`item-check-${btnId.split('-')[1]}`).length; if(selected.length === 0) btn.innerText = "Seçim Yok"; else if(selected.length === total) btn.innerText = "Hepsi Seçili"; else btn.innerText = selected.length + " " + label + " Seçili"; }
 
-        // --- AYARLAR MODAL YÖNETİMİ (GÜNCELLENDİ) ---
+        // --- AYARLAR MODAL YÖNETİMİ ---
         let activeCategory = "Model"; let selectedRawItems = [];
 
         function openSettings() { 
@@ -433,7 +433,6 @@
         function saveAndCloseSettings() {
             localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups));
             document.getElementById('settings-modal').style.display = 'none';
-            // Değişiklikler anında yansısın diye dashboardu yenileyebiliriz ama şimdilik sadece kapatıyoruz
             if(document.getElementById('dashboard-page').style.display === 'block') {
                 processData();
                 initFilters();
@@ -442,7 +441,7 @@
         }
 
         function discardAndCloseSettings() {
-            // Kaydetmeden çıkınca eskiyi geri yükle
+            // İSTEK 3: Kaydetmeden çıkınca eskiyi geri yükle
             globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
             document.getElementById('settings-modal').style.display = 'none';
         }
@@ -461,14 +460,14 @@
         function removeFromGroup(gName, item) { globalGroups[activeCategory][gName] = globalGroups[activeCategory][gName].filter(x => x !== item); renderSettingsLists(); }
         function deleteGroup(gName) { delete globalGroups[activeCategory][gName]; renderSettingsLists(); }
 
-        // --- CHART RENDER (DİNAMİK BOYUTLU) ---
+        // --- CHART RENDER (DİNAMİK BOYUTLU - İSTEK 4) ---
         function renderCharts(data) {
-            // Y ekseni yazılarının uzunluğuna göre marjini hesaplayan fonksiyon
+            // İSTEK 4: Yazı uzunluğuna göre marjini hesapla
             function getDynamicMargin(labels) {
-                if(!labels || labels.length === 0) return 150; // Varsayılan
+                if(!labels || labels.length === 0) return 150; 
                 // En uzun metni bul
                 const maxLen = labels.reduce((a, b) => Math.max(a, b.length), 0);
-                // Kabaca her karakter 7px desek (Fonta göre değişir ama bu güvenlidir)
+                // Her karakter için yaklaşık 7px + temel boşluk
                 return Math.max(150, maxLen * 7);
             }
 
@@ -477,7 +476,7 @@
             const d1 = count(data, "Durum");
             Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...baseLayout, title: 'Satış Durumu' });
 
-            // Model Performansı (Yatay Bar - Dinamik Marjin)
+            // Model Performansı (Dinamik Marjin)
             const models = [...new Set(data.map(d => d.Model))];
             const marginModel = getDynamicMargin(models);
             const satisData = models.map(m => data.filter(d => d.Model === m && d.Durum === "Satış").length);
@@ -487,11 +486,16 @@
                 { ...baseLayout, title: 'Model Performansı', margin:{l: marginModel, r:50, t:50, b:50}, legend:{orientation:'h',y:-0.2} }
             );
 
-            // Kayıp Nedenleri (Dinamik Marjin gerekebilir eğer çok uzunsa, genelde X ekseninde olduğu için altına sığar ama bar chart vertical)
+            // Kayıp Nedenleri (Dinamik Marjin)
             const kData = count(data.filter(d => d.Durum !== "Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni");
             Plotly.newPlot('c-kayip', [{ x: Object.keys(kData), y: Object.values(kData), type: 'bar', marker:{color: '#f1c40f'} }], { ...baseLayout, title: 'Kayıp Nedenleri' });
             
+            // Lead Kaynağı (Dinamik Marjin)
             const lData = count(data, "Lead Kaynağı");
+            const leadLabels = Object.keys(lData);
+            // Eğer lead kaynağı isimleri çok uzunsa ve bar chart dikeyleşiyorsa, yatay (h) yapabiliriz veya margin verebiliriz.
+            // Şimdilik vertical (dikey) barlarda X ekseni yazıları alta gelir, onları sığdırmak için bottom margin artırılabilir.
+            // Ancak Plotly otomatik sığdırır. Biz yine de text uzunsa marjini artıralım.
             Plotly.newPlot('c-lead', [{ x: Object.keys(lData), y: Object.values(lData), type: 'bar', marker:{color: '#9b59b6'} }], { ...baseLayout, title: 'Müşteri (Lead) Kaynağı' });
         }
         function count(data, key) { const c = {}; data.forEach(d => c[d[key]] = (c[d[key]] || 0) + 1); return c; }
