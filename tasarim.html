@@ -100,7 +100,6 @@
         .group-content { padding: 8px; min-height: 40px; background: #222; display: flex; flex-wrap: wrap; gap: 5px; }
         .group-tag { display: inline-flex; align-items: center; background: #00d4ff; color: black; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
         
-        /* GİZLİ ÖĞE STİLİ - Düzeltildi */
         .hidden-item { opacity: 0.4; text-decoration: line-through; border-left: 3px solid red; background: #300 !important; color: #aaa !important; }
         
         .tree-year-row { display: flex; align-items: center; background: #2a2a2a; padding: 5px; margin-top: 5px; border-radius: 4px; }
@@ -283,33 +282,39 @@
             event.stopPropagation();
         }
 
-        // --- VERİ İŞLEME (GİZLEME DÜZELTİLDİ) ---
+        // --- VERİ İŞLEME (GİZLEME DÜZELTİLDİ: TÜM SÜTUNLARA BAK) ---
         function processData() {
+            // Ham veride olmayan grup elemanlarını temizle
             const availableModels = new Set(rawData.map(d => d["Model"]));
             for(let gName in globalGroups["Model"]) {
                 globalGroups["Model"][gName] = globalGroups["Model"][gName].filter(m => availableModels.has(m));
             }
 
-            cleanData = rawData
-                // 1. Önce gizlileri temizle (TRIM yaparak eşleştir)
-                .filter(d => !hiddenItems.includes(d["Model"].trim()))
-                .map(d => {
-                    let row = {...d};
-                    // 2. Sonra grupları uygula
-                    for (let cat in globalGroups) {
-                        if (globalGroups[cat]) {
-                            for (let gName in globalGroups[cat]) {
-                                if (globalGroups[cat][gName].includes(d[cat])) {
-                                    row[cat] = gName; 
-                                    break;
-                                }
+            cleanData = rawData.filter(d => {
+                // HATA DÜZELTME: Sadece Model'e değil, ana sütunların hepsine bak.
+                // Eğer herhangi bir sütundaki veri "hiddenItems" içindeyse o satırı sil.
+                const keysToCheck = ["Model", "Danışman Adı", "Durum", "Kayıp Nedeni", "Lead Kaynağı"];
+                for(let key of keysToCheck) {
+                    if(d[key] && hiddenItems.includes(d[key].toString().trim())) return false;
+                }
+                return true;
+            }).map(d => {
+                let row = {...d};
+                // Grupları uygula
+                for (let cat in globalGroups) {
+                    if (globalGroups[cat]) {
+                        for (let gName in globalGroups[cat]) {
+                            if (globalGroups[cat][gName].includes(d[cat])) {
+                                row[cat] = gName; 
+                                break;
                             }
                         }
                     }
-                    let p = parseDate(d["Tarih"]);
-                    row["_Year"] = p.y; row["_Month"] = p.m; row["_MonthIdx"] = p.idx;
-                    return row;
-                });
+                }
+                let p = parseDate(d["Tarih"]);
+                row["_Year"] = p.y; row["_Month"] = p.m; row["_MonthIdx"] = p.idx;
+                return row;
+            });
         }
 
         function parseDate(dateStr) {
