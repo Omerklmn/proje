@@ -3,166 +3,497 @@ import json
 import os
 import webbrowser
 import sys
+import base64
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import shutil
 
-# --- DOSYA SEÇME MEKANİZMASI ---
+# --- YARDIMCI FONKSİYONLAR ---
+
+def resource_path(relative_path):
+    """ Exe çalışırken ve normal çalışırken dosya yolunu bulur """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+def get_image_data(filename):
+    """ Resim dosyasını Base64 formatına çevirir (HTML içine gömmek için) """
+    # Önce EXE'nin olduğu klasöre bak
+    full_path = os.path.join(os.getcwd(), filename)
+    
+    if os.path.exists(full_path):
+        try:
+            with open(full_path, "rb") as f:
+                return f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
+        except Exception as e:
+            print(f"Resim hatası: {e}")
+            return "https://via.placeholder.com/300x200?text=Resim+Okunamadi"
+    return "https://via.placeholder.com/300x200?text=Gorsel+Yok" # Resim yoksa placeholder döner
+
 def get_excel_file():
-    # 1. Önce yanımızda var mı bakalım (Kolaylık olsun diye)
+    """ Excel dosyasını bulur veya sorar """
     if os.path.exists("veri.xlsx"):
         return "veri.xlsx"
     
-    # 2. Yoksa kullanıcıya soralım
     root = tk.Tk()
-    root.withdraw() # Ana pencereyi gizle
-    
-    # Kullanıcıya bilgi verelim
-    messagebox.showinfo("Veri Dosyası Gerekli", "Programın çalışması için satış verilerinin olduğu Excel dosyasını seçmeniz gerekiyor.")
-    
-    file_path = filedialog.askopenfilename(
-        title="Lütfen veri.xlsx dosyasını seçin",
-        filetypes=[("Excel Dosyaları", "*.xlsx;*.xls")]
-    )
+    root.withdraw()
+    messagebox.showinfo("Dosya Seçimi", "Lütfen 'veri.xlsx' dosyasını seçiniz.")
+    file_path = filedialog.askopenfilename(title="Excel Dosyasını Seç", filetypes=[("Excel Dosyaları", "*.xlsx;*.xls")])
     
     if file_path:
-        # Seçilen dosyayı programın yanına 'veri.xlsx' olarak kopyalayalım ki
-        # bir dahaki sefere tekrar sormasın (İstersen bu satırı silebilirsin)
-        try:
-            shutil.copy(file_path, "veri.xlsx")
-            return "veri.xlsx"
-        except:
-            return file_path # Kopyalayamazsa olduğu yerden okusun
-    else:
-        return None
+        return file_path
+    return None
 
-# --- HTML ŞABLONU ---
-html_content_start = """
+# --- HTML ŞABLONU (ULTIMATE VERSİYON) ---
+# Not: Python f-string içinde CSS süslü parantezleri hata vermesin diye {{ }} olarak çiftledik.
+
+html_template = """
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yönetim Paneli - Güvenli Mod</title>
+    <title>Yönetim Paneli - Ultimate</title>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0e1117; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-        .chart-box { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #333; height: 400px; }
-        .kpi-container { display: flex; gap: 20px; margin-bottom: 20px; }
-        .kpi-card { background: #1e1e1e; flex: 1; padding: 20px; border-radius: 10px; text-align: center; border-top: 4px solid #00d4ff; font-size: 1.2rem; font-weight: bold; }
-        h2 { color: #00d4ff; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .footer { text-align: center; margin-top: 20px; color: #555; font-size: 0.8rem; }
+        body {{ background-color: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow-x: hidden; }}
+        
+        /* GİRİŞ EKRANI */
+        #home-page {{ display: flex; flex-direction: column; align-items: center; min-height: 100vh; }}
+        .header {{ width: 100%; padding: 40px 0; text-align: center; border-bottom: 1px solid #333; }}
+        .header img {{ height: 100px; object-fit: contain; }}
+        .card-container {{ display: flex; gap: 50px; margin-top: 50px; flex-wrap: wrap; justify-content: center; }}
+        .flip-card {{ width: 280px; height: 380px; perspective: 1000px; cursor: pointer; }}
+        .flip-card-inner {{ position: relative; width: 100%; height: 100%; transition: transform 0.8s; transform-style: preserve-3d; }}
+        .flip-card:hover .flip-card-inner {{ transform: rotateY(180deg); }}
+        .flip-card-front, .flip-card-back {{ position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 20px; display: flex; align-items: center; justify-content: center; border: 1px solid #333; }}
+        .flip-card-front {{ background-color: #1a1a1a; }}
+        .flip-card-front h2 {{ color: #ffffff !important; font-size: 28px; letter-spacing: 1px; text-align: center; }}
+        .flip-card-back {{ background-color: #000; transform: rotateY(180deg); overflow: hidden; }}
+        .flip-card-back img {{ width: 85%; height: 85%; object-fit: contain; }}
+
+        /* DASHBOARD */
+        #dashboard-page {{ display: none; padding: 20px; background-color: #0e1117; min-height: 100vh; }}
+        .dash-header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00d4ff; padding-bottom: 10px; margin-bottom: 20px; }}
+        
+        /* FİLTRELER */
+        .filter-container {{ display: flex; gap: 15px; background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; flex-wrap: wrap; }}
+        .multi-select-box {{ position: relative; display: flex; flex-direction: column; width: 200px; }}
+        .select-btn {{ background: #333; color: white; padding: 10px; border-radius: 5px; cursor: pointer; border: 1px solid #555; font-size: 13px; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }}
+        .checkbox-list {{ display: none; position: absolute; top: 100%; left: 0; width: 250px; background: #222; border: 1px solid #555; z-index: 100; max-height: 350px; overflow-y: auto; padding: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); border-radius: 0 0 5px 5px; }}
+        .checkbox-list label {{ display: block; padding: 5px 0; font-size: 13px; cursor: pointer; border-bottom: 1px solid #333; }}
+        .checkbox-list label:hover {{ background: #333; }}
+        .multi-select-box:hover .checkbox-list {{ display: block; }}
+        .select-all-label {{ font-weight: bold; color: #00d4ff; border-bottom: 2px solid #444 !important; margin-bottom: 5px; }}
+
+        /* KPI VE GRAFİKLER */
+        .kpi-container {{ display: flex; gap: 20px; margin-bottom: 20px; }}
+        .kpi-card {{ background: #1f1f1f; flex: 1; padding: 20px; border-radius: 10px; text-align: center; border-top: 4px solid #00d4ff; }}
+        .kpi-val {{ font-size: 30px; font-weight: bold; display: block; margin-top: 5px; }}
+        .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
+        .chart-box {{ background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #333; height: 500px; }}
+        .btn-back {{ background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }}
+
+        /* AYAR BUTONU */
+        .floating-btn {{ position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 999; transition: transform 0.2s; box-shadow: 0 0 15px rgba(0,0,0,0.5); background: #00d4ff; }}
+        .floating-btn:hover {{ transform: scale(1.1); }}
+
+        /* AYARLAR MODAL */
+        #settings-modal {{ display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; }}
+        .settings-content {{ background: #1a1a1a; width: 95%; max-width: 1100px; height: 85vh; border-radius: 15px; border: 1px solid #333; display: flex; overflow: hidden; }}
+        .settings-sidebar {{ width: 220px; background: #151515; border-right: 1px solid #333; padding: 20px; display: flex; flex-direction: column; gap: 10px; }}
+        .cat-btn {{ padding: 12px; background: #222; color: #aaa; border: none; border-radius: 5px; cursor: pointer; text-align: left; font-size: 14px; transition: 0.2s; }}
+        .cat-btn:hover {{ background: #333; color: white; }}
+        .cat-btn.active {{ background: #00d4ff; color: black; font-weight: bold; }}
+        .settings-main {{ flex: 1; padding: 20px; display: flex; flex-direction: column; }}
+        .work-area {{ display: flex; flex: 1; gap: 20px; overflow: hidden; }}
+        .panel-box {{ flex: 1; background: #222; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; border: 1px solid #444; }}
+        .scroll-list {{ flex: 1; overflow-y: auto; padding-right: 5px; background: #181818; border-radius: 5px; padding: 5px; }}
+        .raw-item {{ padding: 8px; margin: 3px 0; background: #333; border-radius: 4px; cursor: pointer; font-size: 13px; }}
+        .raw-item:hover {{ background: #444; }}
+        .raw-item.selected {{ background: #f39c12; color: white; }}
+        .group-container {{ margin-bottom: 10px; border: 1px solid #444; background: #2a2a2a; border-radius: 5px; }}
+        .group-header {{ padding: 10px; background: #333; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; }}
+        .group-content {{ padding: 5px; min-height: 40px; background: #222; }}
+        .group-tag {{ display: inline-block; background: #00d4ff; color: black; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin: 2px; }}
+        .btn-action {{ background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; margin-left: 5px; }}
+        
+        /* Tree View */
+        .tree-year-row {{ display: flex; align-items: center; background: #2a2a2a; padding: 5px; margin-top: 5px; border-radius: 4px; }}
+        .tree-toggle {{ cursor: pointer; margin-right: 8px; width: 15px; text-align: center; color: #aaa; }}
+        .tree-month-container {{ display: none; padding-left: 25px; border-left: 1px solid #444; margin-left: 7px; }}
+        .tree-active .tree-month-container {{ display: block; }}
+        .tree-active .tree-toggle {{ transform: rotate(90deg); color: white; }}
     </style>
 </head>
 <body>
-    <h2>🚀 GÜVENLİ SATIŞ ANALİZ PANELİ</h2>
-"""
 
-html_content_end = """
-    <div class="kpi-container">
-        <div class="kpi-card" style="border-color: #3498db;">Toplam Görüşme: <br><span id="kpi-total">0</span></div>
-        <div class="kpi-card" style="border-color: #2ecc71;">Toplam Satış: <br><span id="kpi-sales">0</span></div>
-        <div class="kpi-card" style="border-color: #f1c40f;">Başarı Oranı: <br><span id="kpi-rate">%0</span></div>
+    <div id="settings-btn" class="floating-btn" onclick="openSettings()">
+        <i class="fas fa-cog" style="color:black; font-size:24px;"></i>
     </div>
 
-    <div class="grid">
-        <div class="chart-box" id="c-durum"></div>
-        <div class="chart-box" id="c-model"></div>
-        <div class="chart-box" id="c-kayip"></div>
-        <div class="chart-box" id="c-lead"></div>
+    <div id="settings-modal">
+        <div class="settings-content">
+            <div class="settings-sidebar">
+                <h3 style="margin:0 0 10px 0; color:#fff;">Kategoriler</h3>
+                <button class="cat-btn active" onclick="setCategory('Model')">🚗 Modeller</button>
+                <button class="cat-btn" onclick="setCategory('Danışman Adı')">👤 Danışmanlar</button>
+                <button class="cat-btn" onclick="setCategory('Durum')">📊 Durumlar</button>
+                <button class="cat-btn" onclick="setCategory('Kayıp Nedeni')">❌ Kayıp Nedenleri</button>
+                <button class="cat-btn" onclick="setCategory('Lead Kaynağı')">🔗 Lead Kaynakları</button>
+                <div style="flex:1;"></div>
+                <button class="cat-btn" style="background:#e74c3c; color:white; text-align:center;" onclick="closeSettings()">KAYDET VE ÇIK</button>
+            </div>
+            <div class="settings-main">
+                <h2 style="margin:0 0 10px 0;" id="settings-title">Model Gruplama</h2>
+                <div class="work-area">
+                    <div class="panel-box">
+                        <div class="panel-title">1. Ham Veriler</div>
+                        <div class="scroll-list" id="raw-list"></div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                        <i class="fas fa-chevron-right" style="font-size:24px; color:#555;"></i>
+                    </div>
+                    <div class="panel-box">
+                        <div class="panel-title">2. Temiz Gruplar</div>
+                        <div class="scroll-list" id="group-list"></div>
+                        <div style="display:flex; gap:5px; margin-top:10px;">
+                            <input type="text" id="new-group-name" placeholder="Yeni Grup Adı..." style="flex:1; padding:8px; border-radius:5px; border:none;">
+                            <button class="btn-action" style="background:#27ae60;" onclick="createGroup()">+ Oluştur</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    
-    <div class="footer">Bu rapor yerel dosyanızdan oluşturulmuştur. Verileriniz internete yüklenmemiştir.</div>
+
+    <div id="home-page">
+        <div class="header"><img src="{logo_src}"></div>
+        <div class="card-container">
+            <div class="flip-card" onclick="openDashboard()">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front"><h2>GRAFİKLER</h2></div>
+                    <div class="flip-card-back"><img src="{grafik_src}"></div>
+                </div>
+            </div>
+            <div class="flip-card" onclick="alert('Simülasyon Modülü Yapım Aşamasında...')">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front"><h2>SATIŞ<br>SİMÜLASYONU</h2></div>
+                    <div class="flip-card-back"><img src="{sim_src}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-page">
+        <div class="dash-header">
+            <button class="btn-back" onclick="openHome()">← ANA MENÜ</button>
+            <h2 style="color:#00d4ff; margin:0;">📈 Analiz Paneli</h2>
+            <div></div>
+        </div>
+
+        <div class="filter-container">
+            <div class="multi-select-box">
+                <label style="font-size:11px; color:#aaa;">👤 DANIŞMAN</label>
+                <div class="select-btn" id="btn-danisman">Hepsi Seçili</div>
+                <div class="checkbox-list" id="list-danisman"></div>
+            </div>
+            <div class="multi-select-box">
+                <label style="font-size:11px; color:#aaa;">🚗 MODEL</label>
+                <div class="select-btn" id="btn-model">Hepsi Seçili</div>
+                <div class="checkbox-list" id="list-model"></div>
+            </div>
+            <div class="multi-select-box" style="width:250px;">
+                <label style="font-size:11px; color:#aaa;">📅 TARİH (YIL - AY)</label>
+                <div class="select-btn" id="btn-tarih">Hepsi Seçili</div>
+                <div class="checkbox-list" id="list-tarih"></div>
+            </div>
+        </div>
+
+        <div class="kpi-container">
+            <div class="kpi-card">GÖRÜŞME <span id="k-top" class="kpi-val">0</span></div>
+            <div class="kpi-card" style="border-top-color:#2ecc71">SATIŞ <span id="k-sat" class="kpi-val" style="color:#2ecc71">0</span></div>
+            <div class="kpi-card" style="border-top-color:#f1c40f">BAŞARI <span id="k-ora" class="kpi-val" style="color:#f1c40f">%0</span></div>
+        </div>
+
+        <div class="grid">
+            <div class="chart-box" id="c-durum"></div>
+            <div class="chart-box" id="c-model"></div>
+            <div class="chart-box" id="c-kayip"></div>
+            <div class="chart-box" id="c-lead"></div>
+        </div>
+    </div>
 
     <script>
-        let rawData = JSON_DATA_HERE;
+        let rawData = {json_data};
+        let cleanData = [];
+        let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || {{ "Model": {{}}, "Danışman Adı": {{}}, "Durum": {{}}, "Kayıp Nedeni": {{}}, "Lead Kaynağı": {{}} }};
+        let currentFilteredData = []; 
 
-        function count(data, key) { 
-            const c = {}; 
-            data.forEach(d => c[d[key]] = (c[d[key]] || 0) + 1); 
-            return c; 
-        }
+        const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        function parseDate(dateStr) {{
+            if(!dateStr || dateStr === "Belirtilmemiş" || dateStr === "nan") return {{ y: "Diğer", m: "Belirtilmemiş", idx: 99 }};
+            let d = new Date(dateStr);
+            if(isNaN(d.getTime())) return {{ y: "Diğer", m: "Belirtilmemiş", idx: 99 }};
+            return {{ y: d.getFullYear().toString(), m: monthNames[d.getMonth()], idx: d.getMonth() }};
+        }}
 
-        function render() {
-            if (rawData.length === 0) return;
+        function processData() {{
+            if(rawData.length === 0) return; 
+            cleanData = rawData.map(d => {{
+                let newRow = {{ ...d }};
+                const cols = ["Model", "Danışman Adı", "Durum", "Kayıp Nedeni", "Lead Kaynağı"];
+                cols.forEach(col => {{
+                    let rawVal = d[col];
+                    if(globalGroups[col]) {{
+                        for(let gName in globalGroups[col]) {{
+                            if(globalGroups[col][gName].includes(rawVal)) {{
+                                newRow[col] = gName;
+                                break;
+                            }}
+                        }}
+                    }}
+                }});
+                let p = parseDate(d["Tarih"]);
+                newRow["_Year"] = p.y; newRow["_Month"] = p.m; newRow["_MonthIdx"] = p.idx;
+                return newRow;
+            }});
+        }}
 
-            const total = rawData.length;
-            const sales = rawData.filter(d => d.Durum === 'Satış').length;
-            const rate = total > 0 ? ((sales/total)*100).toFixed(1) : 0;
+        function openDashboard() {{
+            if(rawData.length === 0) {{ alert("Gösterilecek veri bulunamadı!"); }}
+            document.getElementById('home-page').style.display = 'none';
+            document.getElementById('dashboard-page').style.display = 'block';
+            document.getElementById('settings-btn').style.display = 'none';
+            processData(); 
+            initFilters();
+            window.dispatchEvent(new Event('resize'));
+            updateDash();
+        }}
 
-            document.getElementById('kpi-total').innerText = total;
-            document.getElementById('kpi-sales').innerText = sales;
-            document.getElementById('kpi-rate').innerText = '%' + rate;
+        function openHome() {{
+            document.getElementById('dashboard-page').style.display = 'none';
+            document.getElementById('home-page').style.display = 'flex';
+            document.getElementById('settings-btn').style.display = 'flex';
+        }}
 
-            const layout = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'white'}, margin:{t:30,b:30,l:30,r:30} };
+        function initFilters() {{
+            if(cleanData.length === 0) return;
+            setupChecklist("list-danisman", [...new Set(cleanData.map(d => d["Danışman Adı"]))].sort(), "btn-danisman");
+            setupChecklist("list-model", [...new Set(cleanData.map(d => d["Model"]))].sort(), "btn-model");
+            setupDateFilter();
+        }}
+
+        function setupDateFilter() {{
+            const container = document.getElementById("list-tarih");
+            container.innerHTML = "";
+            let hierarchy = {{}};
+            cleanData.forEach(d => {{
+                let y = d._Year; let m = d._Month; let idx = d._MonthIdx;
+                if(!hierarchy[y]) hierarchy[y] = [];
+                if(!hierarchy[y].find(x => x.name === m)) hierarchy[y].push({{ name: m, idx: idx }});
+            }});
             
-            // 1. Durum Pasta
-            const d1 = count(rawData, "Durum");
-            Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...layout, title: 'Satış Durumu' });
+            const allDiv = document.createElement("div");
+            allDiv.innerHTML = `<label class="select-all-label"><input type="checkbox" id="all-date-check" checked> (Tüm Tarihler)</label>`;
+            container.appendChild(allDiv);
 
-            // 2. Model Bar
-            const models = count(rawData.filter(d=>d.Durum==='Satış'), 'Model');
-            Plotly.newPlot('c-model', [{ x: Object.values(models), y: Object.keys(models), type: 'bar', orientation: 'h', marker:{color:'#2ecc71'} }], { ...layout, title: 'Satılan Modeller' });
+            Object.keys(hierarchy).sort().reverse().forEach(year => {{
+                const yearWrap = document.createElement("div");
+                const row = document.createElement("div");
+                row.className = "tree-year-row";
+                row.innerHTML = `<i class="fas fa-chevron-right tree-toggle"></i> <input type="checkbox" class="tree-year-check" value="${{year}}" checked> <span>${{year}}</span>`;
+                row.querySelector(".tree-toggle").onclick = function() {{ yearWrap.classList.toggle("tree-active"); }};
+                const yearCheck = row.querySelector(".tree-year-check");
+                const monthsContainer = document.createElement("div");
+                monthsContainer.className = "tree-month-container";
+                
+                hierarchy[year].sort((a,b) => a.idx - b.idx).forEach(mObj => {{
+                    const mRow = document.createElement("div");
+                    mRow.className = "tree-month-row";
+                    mRow.innerHTML = `<input type="checkbox" class="tree-month-check" data-year="${{year}}" value="${{mObj.name}}" checked> ${{mObj.name}}`;
+                    monthsContainer.appendChild(mRow);
+                }});
 
-            // 3. Kayıp
-            const losses = count(rawData.filter(d=>d.Durum!=='Satış'), 'Kayıp Nedeni');
-            Plotly.newPlot('c-kayip', [{ x: Object.keys(losses), y: Object.values(losses), type: 'bar', marker:{color:'#e74c3c'} }], { ...layout, title: 'Kayıp Nedenleri' });
+                yearWrap.appendChild(row); yearWrap.appendChild(monthsContainer); container.appendChild(yearWrap);
+                yearCheck.onchange = function() {{ monthsContainer.querySelectorAll(".tree-month-check").forEach(s => s.checked = yearCheck.checked); updateDash(); }};
+            }});
+            document.getElementById("all-date-check").onclick = function() {{ 
+                const state = this.checked; 
+                container.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = state); 
+                updateDash(); 
+            }};
+        }}
 
-            // 4. Lead (DÜZELTİLDİ: Lead Kaynağı sütunu)
-            const sources = count(rawData, 'Lead Kaynağı');
-            Plotly.newPlot('c-lead', [{ x: Object.keys(sources), y: Object.values(sources), type: 'bar', marker:{color:'#9b59b6'} }], { ...layout, title: 'Müşteri Kaynağı' });
-        }
+        function getSelectedDateFilters() {{
+            let selectedPairs = [];
+            document.querySelectorAll(".tree-month-check:checked").forEach(cb => {{ selectedPairs.push(cb.getAttribute("data-year") + "-" + cb.value); }});
+            return selectedPairs;
+        }}
 
-        render();
+        function updateDash() {{
+            if(cleanData.length === 0) return;
+            const selDanisman = getSelected("list-danisman");
+            const selModel = getSelected("list-model");
+            const selDatePairs = getSelectedDateFilters();
+
+            updateBtnText("btn-danisman", selDanisman, "Danışman");
+            updateBtnText("btn-model", selModel, "Model");
+            
+            const totalMonths = document.querySelectorAll(".tree-month-check").length;
+            const selMonths = document.querySelectorAll(".tree-month-check:checked").length;
+            document.getElementById("btn-tarih").innerText = (selMonths === totalMonths) ? "Hepsi Seçili" : selMonths + " Ay Seçili";
+
+            currentFilteredData = cleanData.filter(d => 
+                selDanisman.includes(d["Danışman Adı"]) &&
+                selModel.includes(d["Model"]) &&
+                selDatePairs.includes(d["_Year"] + "-" + d["_Month"])
+            );
+
+            const filtered = currentFilteredData; 
+
+            document.getElementById("k-top").innerText = filtered.length;
+            const nSat = filtered.filter(d => d["Durum"] === "Satış").length;
+            document.getElementById("k-sat").innerText = nSat;
+            document.getElementById("k-ora").innerText = "%" + (filtered.length > 0 ? (nSat/filtered.length*100).toFixed(1) : 0);
+
+            renderCharts(filtered);
+        }}
+
+        function setupChecklist(listId, items, btnId) {{
+            const container = document.getElementById(listId);
+            container.innerHTML = "";
+            const allLabel = document.createElement("label");
+            allLabel.className = "select-all-label";
+            allLabel.innerHTML = `<input type="checkbox" id="all-${{listId}}" checked> (Tümünü Seç)`;
+            container.appendChild(allLabel);
+            items.forEach(item => {{
+                const lbl = document.createElement("label");
+                lbl.innerHTML = `<input type="checkbox" class="item-check-${{listId}}" value="${{item}}" checked> ${{item}}`;
+                container.appendChild(lbl);
+            }});
+            const allCheck = document.getElementById(`all-${{listId}}`);
+            const itemChecks = document.getElementsByClassName(`item-check-${{listId}}`);
+            allCheck.onclick = () => {{ for(let c of itemChecks) c.checked = allCheck.checked; updateDash(); }};
+            container.onchange = (e) => {{ if(e.target !== allCheck) allCheck.checked = (itemChecks.length === Array.from(itemChecks).filter(c => c.checked).length); updateDash(); }};
+        }}
+
+        function getSelected(listId) {{ return Array.from(document.querySelectorAll(`.item-check-${{listId}}:checked`)).map(i => i.value); }}
+        function updateBtnText(btnId, selected, label) {{ const btn = document.getElementById(btnId); const total = document.getElementsByClassName(`item-check-${{btnId.split('-')[1]}}`).length; if(selected.length === 0) btn.innerText = "Seçim Yok"; else if(selected.length === total) btn.innerText = "Hepsi Seçili"; else btn.innerText = selected.length + " " + label + " Seçili"; }}
+
+        // --- AYARLAR MODAL ---
+        let activeCategory = "Model"; let selectedRawItems = [];
+        function openSettings() {{ document.getElementById('settings-modal').style.display = 'flex'; setCategory(activeCategory); }}
+        function closeSettings() {{ document.getElementById('settings-modal').style.display = 'none'; localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); }}
+        function setCategory(cat) {{ activeCategory = cat; document.getElementById('settings-title').innerText = cat + " Gruplama"; document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); renderSettingsLists(); }}
+        function renderSettingsLists() {{ 
+            const rawDiv = document.getElementById('raw-list'); const groupDiv = document.getElementById('group-list'); selectedRawItems = []; rawDiv.innerHTML = ''; groupDiv.innerHTML = '';
+            if(rawData.length === 0) {{ rawDiv.innerHTML = 'Veri yok.'; return; }}
+            const allValues = [...new Set(rawData.map(d => d[activeCategory]))].sort();
+            let assigned = []; let groups = globalGroups[activeCategory] || {{}}; for(let g in groups) assigned.push(...groups[g]);
+            allValues.forEach(val => {{ if(!assigned.includes(val)) {{ const el = document.createElement('div'); el.className = 'raw-item'; el.innerText = val; el.onclick = function() {{ this.classList.toggle('selected'); if(this.classList.contains('selected')) selectedRawItems.push(val); else selectedRawItems = selectedRawItems.filter(x => x !== val); }}; rawDiv.appendChild(el); }} }});
+            for(let gName in groups) {{ const gBox = document.createElement('div'); gBox.className = 'group-container'; gBox.innerHTML = `<div class="group-header"><span>${{gName}}</span> <div><button class="btn-action" onclick="addToGroup('${{gName}}')">Ekle</button><button class="btn-action" style="background:#e74c3c" onclick="deleteGroup('${{gName}}')">Sil</button></div></div><div class="group-content">${{groups[gName].map(i=>`<span class="group-tag">${{i}} <i class="fas fa-times" onclick="removeFromGroup('${{gName}}','${{i}}')"></i></span>`).join('')}}</div>`; groupDiv.appendChild(gBox); }}
+        }}
+        function createGroup() {{ const name = document.getElementById('new-group-name').value.trim(); if(!globalGroups[activeCategory]) globalGroups[activeCategory]={{}}; if(name && !globalGroups[activeCategory][name]) {{ globalGroups[activeCategory][name]=[]; document.getElementById('new-group-name').value=''; renderSettingsLists(); }} }}
+        function addToGroup(gName) {{ globalGroups[activeCategory][gName].push(...selectedRawItems); renderSettingsLists(); }}
+        function removeFromGroup(gName, item) {{ globalGroups[activeCategory][gName] = globalGroups[activeCategory][gName].filter(x => x !== item); renderSettingsLists(); }}
+        function deleteGroup(gName) {{ delete globalGroups[activeCategory][gName]; renderSettingsLists(); }}
+
+        function renderCharts(data) {{
+            const layout = {{ paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{{color:'white'}}, margin:{{t:50,b:50,l:50,r:50}}, barmode: 'stack' }};
+            const d1 = count(data, "Durum");
+            Plotly.newPlot('c-durum', [{{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }}], {{ ...layout, title: 'Satış Durumu' }});
+            const models = [...new Set(data.map(d => d.Model))];
+            const satisData = models.map(m => data.filter(d => d.Model === m && d.Durum === "Satış").length);
+            const digerData = models.map(m => data.filter(d => d.Model === m && d.Durum !== "Satış").length);
+            Plotly.newPlot('c-model', [{{ x: satisData, y: models, name: 'Satış', type: 'bar', orientation: 'h', marker:{{color:'#2ecc71'}} }}, {{ x: digerData, y: models, name: 'Diğer', type: 'bar', orientation: 'h', marker:{{color:'#e74c3c'}} }}], {{ ...layout, title: 'Model Performansı', margin:{{l:150}}, legend:{{orientation:'h',y:-0.2}} }});
+            const kData = count(data.filter(d => d.Durum !== "Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni");
+            Plotly.newPlot('c-kayip', [{{ x: Object.keys(kData), y: Object.values(kData), type: 'bar', marker:{{color: '#f1c40f'}} }}], {{ ...layout, title: 'Kayıp Nedenleri' }});
+            
+            const lData = count(data, "Lead Kaynağı");
+            Plotly.newPlot('c-lead', [{{ x: Object.keys(lData), y: Object.values(lData), type: 'bar', marker:{{color: '#9b59b6'}} }}], {{ ...layout, title: 'Lead Kaynağı' }});
+        }}
+        function count(data, key) {{ const c = {{}}; data.forEach(d => c[d[key]] = (c[d[key]] || 0) + 1); return c; }}
     </script>
 </body>
 </html>
 """
 
 def main():
+    print("--- ULTIMATE DASHBOARD BAŞLATILIYOR ---")
+    
+    # 1. Dosya Seçimi
     target_file = get_excel_file()
     
     if not target_file:
-        print("Dosya seçilmedi. Program kapatılıyor.")
+        print("İşlem iptal edildi.")
         return
 
     try:
-        # Excel Okuma
-        df = pd.read_excel(target_file)
+        # 2. Excel Okuma
+        df_raw = pd.read_excel(target_file)
+        df = pd.DataFrame()
         
-        # Sütun Eşleştirme (Senin Excel yapına göre)
         column_map = {
-            'Danışman Adı': 'Danışman Adı', 
-            'Model': 'Model', 
+            'Danışman Adı': 'Danışman Adı',
+            'Model': 'Model',
             'Durum': 'Durum',
-            'Kapatılma Tarihi': 'Tarih', 
+            'Kapatılma Tarihi': 'Tarih',
             'Kayıp Satış Nedeni': 'Kayıp Nedeni',
-            'Lead Kaynağı': 'Lead Kaynağı' # Burası kritik
+            'Lead Kaynağı': 'Lead Kaynağı'
         }
         
-        df_clean = pd.DataFrame()
+        # Sütunları güvenli şekilde eşleştir
         for col_excel, col_code in column_map.items():
-            if col_excel in df.columns:
-                df_clean[col_code] = df[col_excel].astype(str).replace(['nan', 'None', '', 'NaT'], 'Belirtilmemiş')
+            found = False
+            # Tam eşleşme ara
+            if col_excel in df_raw.columns:
+                df[col_code] = df_raw[col_excel].astype(str)
+                found = True
             else:
-                df_clean[col_code] = 'Belirtilmemiş'
+                # Boşluklu vs. ara
+                for raw_col in df_raw.columns:
+                    if raw_col.strip() == col_excel:
+                        df[col_code] = df_raw[raw_col].astype(str)
+                        found = True
+                        break
+            
+            if not found:
+                df[col_code] = 'Belirtilmemiş'
         
-        json_str = df_clean.to_json(orient='records')
+        # NaN temizliği
+        for col in df.columns:
+            df[col] = df[col].replace(['nan', 'None', '', 'NaT', 'NaN'], 'Belirtilmemiş')
+            
+        json_data = df.to_json(orient='records')
+        print(f"Veri yüklendi: {len(df)} kayıt.")
         
-        # HTML Oluştur
-        final_html = html_content_start.replace("JSON_DATA_HERE", json_str) + html_content_end
+        # 3. Resimleri Yükle
+        # Exe'nin yanında bu isimlerde dosya arayacak
+        logo_img = get_image_data("logo.webp") 
+        grafik_img = get_image_data("grafik_resmi.png")
+        sim_img = get_image_data("simulasyon_resmi.png")
         
-        with open("Rapor_Paneli.html", "w", encoding="utf-8") as f:
+        # 4. HTML Oluştur
+        final_html = html_template.format(
+            json_data=json_data, 
+            logo_src=logo_img, 
+            grafik_src=grafik_img, 
+            sim_src=sim_img
+        )
+        
+        with open("Ultimate_Rapor.html", "w", encoding="utf-8") as f:
             f.write(final_html)
         
-        print("Panel hazır! Tarayıcı açılıyor...")
-        webbrowser.open("Rapor_Paneli.html")
+        print("Panel açılıyor...")
+        webbrowser.open("Ultimate_Rapor.html")
         
     except Exception as e:
-        # Hata olursa pencere açıp gösterelim
         root = tk.Tk()
         root.withdraw()
-        messagebox.showerror("Hata Oluştu", f"Excel dosyası okunurken hata oluştu:\n{str(e)}")
+        messagebox.showerror("Hata", f"Beklenmedik bir hata oluştu:\n{e}")
 
 if __name__ == "__main__":
     main()
