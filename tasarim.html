@@ -31,20 +31,27 @@
         #dashboard-page, #simulation-page { display: none; padding: 20px; background-color: #0e1117; min-height: 100vh; }
         .dash-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00d4ff; padding-bottom: 10px; margin-bottom: 20px; }
         
-        .filter-container { display: flex; gap: 15px; background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        /* FİLTRELER (GÜNCELLENDİ: Z-INDEX ARTIRILDI) */
+        .filter-container { display: flex; gap: 15px; background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; flex-wrap: wrap; position: relative; z-index: 1001; }
         .multi-select-box { position: relative; display: flex; flex-direction: column; width: 200px; }
         .select-btn { background: #333; color: white; padding: 10px; border-radius: 5px; cursor: pointer; border: 1px solid #555; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-        .checkbox-list { display: none; position: absolute; top: 100%; left: 0; width: 250px; background: #222; border: 1px solid #555; z-index: 100; max-height: 350px; overflow-y: auto; padding: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        .multi-select-box:hover .checkbox-list { display: block; }
+        .select-btn:after { content: '▼'; float: right; font-size: 10px; margin-top: 3px; }
+        
+        /* Checkbox Listesi Artık Tıklayınca Açılacak */
+        .checkbox-list { display: none; position: absolute; top: 100%; left: 0; width: 250px; background: #222; border: 1px solid #555; z-index: 9999; max-height: 350px; overflow-y: auto; padding: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.8); border-radius: 5px; margin-top: 5px; }
+        .checkbox-list.show { display: block; } /* JS ile tetiklenecek */
+        .checkbox-list label { display: block; padding: 5px 0; font-size: 13px; cursor: pointer; border-bottom: 1px solid #333; }
+        .checkbox-list label:hover { background: #333; }
+        .select-all-label { font-weight: bold; color: #00d4ff; border-bottom: 2px solid #444 !important; margin-bottom: 5px; }
 
         .kpi-container { display: flex; gap: 20px; margin-bottom: 20px; }
         .kpi-card { background: #1f1f1f; flex: 1; padding: 20px; border-radius: 10px; text-align: center; border-top: 4px solid #00d4ff; }
         .kpi-val { font-size: 30px; font-weight: bold; display: block; margin-top: 5px; }
         
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; position: relative; z-index: 1; }
         .chart-box { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #333; height: 500px; }
 
-        /* SİMÜLASYON STİLLERİ (YENİ) */
+        /* SİMÜLASYON STİLLERİ */
         .sim-container { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; margin-top: 20px; width: 100%; }
         .sim-step { width: 100%; max-width: 1000px; display: none; animation: fadeIn 0.5s; }
         .sim-step.active { display: block; }
@@ -58,7 +65,6 @@
         .result-box { background: #fff; color: #333; padding: 30px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
         .prob-score { font-size: 50px; font-weight: bold; color: #27ae60; }
         
-        /* What-If Kontrolleri */
         .what-if-panel { background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #444; margin-top: 20px; }
         .control-row { display: flex; gap: 20px; justify-content: center; margin-bottom: 15px; align-items: center; }
         .control-group { display: flex; flex-direction: column; width: 200px; }
@@ -91,8 +97,13 @@
         .group-header { padding: 10px; background: #333; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; }
         .group-content { padding: 5px; min-height: 40px; background: #222; }
         .group-tag { display: inline-block; background: #00d4ff; color: black; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin: 2px; }
-        /* Gizleme Tuşu İçin Stil */
         .hidden-item { opacity: 0.5; text-decoration: line-through; border-left: 3px solid red; }
+        
+        .tree-year-row { display: flex; align-items: center; background: #2a2a2a; padding: 5px; margin-top: 5px; border-radius: 4px; }
+        .tree-toggle { cursor: pointer; margin-right: 8px; width: 15px; text-align: center; color: #aaa; }
+        .tree-month-container { display: none; padding-left: 25px; border-left: 1px solid #444; margin-left: 7px; }
+        .tree-active .tree-month-container { display: block; }
+        .tree-active .tree-toggle { transform: rotate(90deg); color: white; }
     </style>
 </head>
 <body>
@@ -107,6 +118,9 @@
                 <h3 style="margin:0 0 10px 0; color:#fff;">Kategoriler</h3>
                 <button class="cat-btn active" onclick="setCategory('Model')">🚗 Modeller</button>
                 <button class="cat-btn" onclick="setCategory('Danışman Adı')">👤 Danışmanlar</button>
+                <button class="cat-btn" onclick="setCategory('Durum')">📊 Durumlar</button>
+                <button class="cat-btn" onclick="setCategory('Kayıp Nedeni')">❌ Kayıp Nedenleri</button>
+                <button class="cat-btn" onclick="setCategory('Lead Kaynağı')">🔗 Lead Kaynakları</button>
                 <div style="flex:1;"></div>
                 <button class="cat-btn" style="background:#27ae60; color:white; text-align:center; margin-bottom:5px;" onclick="saveAndCloseSettings()">KAYDET VE ÇIK</button>
                 <button class="cat-btn" style="background:#e74c3c; color:white; text-align:center;" onclick="discardAndCloseSettings()">KAYDETMEDEN ÇIK</button>
@@ -162,8 +176,21 @@
             <div></div>
         </div>
         <div class="filter-container">
-            <div class="multi-select-box"><label style="font-size:11px; color:#aaa;">👤 DANIŞMAN</label><div class="select-btn" id="btn-danisman">Hepsi</div><div class="checkbox-list" id="list-danisman"></div></div>
-            <div class="multi-select-box"><label style="font-size:11px; color:#aaa;">🚗 MODEL</label><div class="select-btn" id="btn-model">Hepsi</div><div class="checkbox-list" id="list-model"></div></div>
+            <div class="multi-select-box">
+                <label style="font-size:11px; color:#aaa;">👤 DANIŞMAN</label>
+                <div class="select-btn" onclick="toggleDropdown('list-danisman')" id="btn-danisman">Hepsi</div>
+                <div class="checkbox-list" id="list-danisman"></div>
+            </div>
+            <div class="multi-select-box">
+                <label style="font-size:11px; color:#aaa;">🚗 MODEL</label>
+                <div class="select-btn" onclick="toggleDropdown('list-model')" id="btn-model">Hepsi</div>
+                <div class="checkbox-list" id="list-model"></div>
+            </div>
+            <div class="multi-select-box" style="width:250px;">
+                <label style="font-size:11px; color:#aaa;">📅 TARİH (YIL - AY)</label>
+                <div class="select-btn" onclick="toggleDropdown('list-tarih')" id="btn-tarih">Hepsi</div>
+                <div class="checkbox-list" id="list-tarih"></div>
+            </div>
         </div>
         <div class="kpi-container">
             <div class="kpi-card">GÖRÜŞME <span id="k-top" class="kpi-val">0</span></div>
@@ -190,54 +217,37 @@
                 <div class="sim-title">Adım 1: Lütfen bir Danışman seçin</div>
                 <div class="selection-grid" id="grid-consultant"></div>
             </div>
-
             <div id="sim-step-2" class="sim-step">
                 <div class="sim-title">Adım 2: İlgilenilen Model (Gruplanmış)</div>
                 <div class="selection-grid" id="grid-model"></div>
                 <button class="btn-back" onclick="goToStep(1)" style="margin-top:20px;">Geri Dön</button>
             </div>
-
             <div id="sim-step-3" class="sim-step">
                 <div class="sim-title">Adım 3: Dönem (Ay) Seçimi</div>
                 <div class="selection-grid" id="grid-month"></div>
                 <button class="btn-back" onclick="goToStep(2)" style="margin-top:20px;">Geri Dön</button>
             </div>
-
             <div id="sim-step-4" class="sim-step">
                 <div class="sim-title">📊 Simülasyon Sonucu & Analiz</div>
-                
                 <div class="result-box">
                     <div style="font-size:14px; color:#aaa;">TAHMİNİ BAŞARI ORANI</div>
                     <div class="prob-score" id="result-score">%0</div>
                     <div id="result-detail" style="margin-top:10px;"></div>
                 </div>
-
                 <div class="what-if-panel">
                     <h3 style="margin-top:0;">Senaryoyu Değiştir (What-If)</h3>
                     <div class="control-row">
-                        <div class="control-group">
-                            <label>Danışman</label>
-                            <select id="wi-cons" class="control-select" onchange="recalculateSim()"></select>
-                        </div>
-                        <div class="control-group">
-                            <label>Model</label>
-                            <select id="wi-model" class="control-select" onchange="recalculateSim()"></select>
-                        </div>
-                        <div class="control-group">
-                            <label>Ay</label>
-                            <select id="wi-month" class="control-select" onchange="recalculateSim()"></select>
-                        </div>
+                        <div class="control-group"><label>Danışman</label><select id="wi-cons" class="control-select" onchange="recalculateSim()"></select></div>
+                        <div class="control-group"><label>Model</label><select id="wi-model" class="control-select" onchange="recalculateSim()"></select></div>
+                        <div class="control-group"><label>Ay</label><select id="wi-month" class="control-select" onchange="recalculateSim()"></select></div>
                     </div>
-                    
                     <div class="slider-row">
                         <div class="slider-group"><label>Danışman Etkisi</label><input type="range" id="w-cons" class="weight-slider" value="50" oninput="recalculateSim()"></div>
                         <div class="slider-group"><label>Model Etkisi</label><input type="range" id="w-model" class="weight-slider" value="30" oninput="recalculateSim()"></div>
                         <div class="slider-group"><label>Zaman Etkisi</label><input type="range" id="w-month" class="weight-slider" value="20" oninput="recalculateSim()"></div>
                     </div>
                 </div>
-                
                 <div id="ai-suggestion" style="margin-top:20px; color:#f39c12; text-align:center; font-style:italic;"></div>
-
                 <button class="btn-back" onclick="resetSim()" style="margin-top:20px; background:#34495e;">Yeni Simülasyon</button>
             </div>
         </div>
@@ -245,198 +255,336 @@
 
     <script>
         let rawData = [[JSON_DATA]];
-        // İSTEK 2: GRUP TEMİZLİĞİ (LocalStorage ile senkronizasyon)
-        let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {} };
-        let hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')) || []; // İSTEK 3: Gizli öğeler
+        let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
+        let hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')) || [];
+        let cleanData = [];
 
+        // --- SAYFA TIKLAMA YÖNETİMİ (DROPDOWN KAPATMA) ---
+        window.onclick = function(event) {
+            if (!event.target.matches('.select-btn')) {
+                var dropdowns = document.getElementsByClassName("checkbox-list");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+        function toggleDropdown(id) {
+            var dropdowns = document.getElementsByClassName("checkbox-list");
+            for (var i = 0; i < dropdowns.length; i++) {
+                if (dropdowns[i].id !== id) dropdowns[i].classList.remove('show');
+            }
+            document.getElementById(id).classList.toggle("show");
+            event.stopPropagation();
+        }
+
+        // --- VERİ İŞLEME VE TEMİZLİK ---
         function cleanGroups() {
-            // Veri dosyasında var olanları bul
             const availableModels = new Set(rawData.map(d => d["Model"]));
-            
-            // Grupları gez, olmayanları çıkar
             for(let gName in globalGroups["Model"]) {
                 globalGroups["Model"][gName] = globalGroups["Model"][gName].filter(m => availableModels.has(m));
             }
             localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups));
         }
-        
-        // Başlangıçta temizle
-        if(rawData.length > 0) cleanGroups();
 
-        // Veriyi İşle
-        let cleanData = rawData.map(d => {
-            let row = {...d};
-            // Grupları uygula
-            for (let cat in globalGroups) {
-                if (globalGroups[cat]) {
-                    for (let gName in globalGroups[cat]) {
-                        if (globalGroups[cat][gName].includes(d[cat])) {
-                            row[cat] = gName;
-                            break;
+        const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        function parseDate(dateStr) {
+            if(!dateStr || dateStr === "Belirtilmemiş" || dateStr === "nan") return { y: "Diğer", m: "Belirtilmemiş", idx: 99 };
+            let d = new Date(dateStr);
+            if(isNaN(d.getTime())) return { y: "Diğer", m: "Belirtilmemiş", idx: 99 };
+            return { y: d.getFullYear().toString(), m: monthNames[d.getMonth()], idx: d.getMonth() };
+        }
+
+        function processData() {
+            if(rawData.length > 0) cleanGroups();
+            cleanData = rawData.map(d => {
+                let row = {...d};
+                for (let cat in globalGroups) {
+                    if (globalGroups[cat]) {
+                        for (let gName in globalGroups[cat]) {
+                            if (globalGroups[cat][gName].includes(d[cat])) {
+                                row[cat] = gName; break;
+                            }
                         }
                     }
                 }
-            }
-            return row;
-        }).filter(d => !hiddenItems.includes(d["Model"])); // Gizlileri çıkar
+                let p = parseDate(d["Tarih"]);
+                row["_Year"] = p.y; row["_Month"] = p.m; row["_MonthIdx"] = p.idx;
+                return row;
+            }).filter(d => !hiddenItems.includes(d["Model"]));
+        }
 
-        // --- CHART FONKSİYONLARI ---
+        function openDashboard() {
+            if(rawData.length === 0) { alert("Veri yok!"); return; }
+            document.getElementById('home-page').style.display = 'none';
+            document.getElementById('dashboard-page').style.display = 'block';
+            processData();
+            initFilters();
+            updateDash();
+        }
+
+        // --- FİLTRELER ---
+        function initFilters() {
+            if(cleanData.length === 0) return;
+            setupChecklist("list-danisman", [...new Set(cleanData.map(d => d["Danışman Adı"]))].sort(), "btn-danisman");
+            setupChecklist("list-model", [...new Set(cleanData.map(d => d["Model"]))].sort(), "btn-model");
+            setupDateFilter();
+        }
+
+        function setupChecklist(listId, items, btnId) {
+            const container = document.getElementById(listId);
+            container.innerHTML = "";
+            const allLabel = document.createElement("label");
+            allLabel.className = "select-all-label";
+            allLabel.innerHTML = `<input type="checkbox" id="all-${listId}" checked> (Tümünü Seç)`;
+            container.appendChild(allLabel);
+            items.forEach(item => {
+                if(item) {
+                    const lbl = document.createElement("label");
+                    lbl.innerHTML = `<input type="checkbox" class="item-check-${listId}" value="${item}" checked> ${item}`;
+                    container.appendChild(lbl);
+                }
+            });
+            const allCheck = document.getElementById(`all-${listId}`);
+            const itemChecks = document.getElementsByClassName(`item-check-${listId}`);
+            allCheck.onclick = (e) => { e.stopPropagation(); for(let c of itemChecks) c.checked = allCheck.checked; updateDash(); };
+            container.onchange = (e) => { if(e.target !== allCheck) allCheck.checked = (itemChecks.length === Array.from(itemChecks).filter(c => c.checked).length); updateDash(); };
+            // Tıklamaların dropdown'ı kapatmamasını sağla
+            container.onclick = (e) => e.stopPropagation();
+        }
+
+        function setupDateFilter() {
+            const container = document.getElementById("list-tarih");
+            container.onclick = (e) => e.stopPropagation();
+            container.innerHTML = "";
+            let hierarchy = {};
+            cleanData.forEach(d => {
+                let y = d._Year; let m = d._Month; let idx = d._MonthIdx;
+                if(!hierarchy[y]) hierarchy[y] = [];
+                if(!hierarchy[y].find(x => x.name === m)) hierarchy[y].push({ name: m, idx: idx });
+            });
+            
+            const allDiv = document.createElement("div");
+            allDiv.innerHTML = `<label class="select-all-label"><input type="checkbox" id="all-date-check" checked> (Tüm Tarihler)</label>`;
+            container.appendChild(allDiv);
+
+            Object.keys(hierarchy).sort().reverse().forEach(year => {
+                const yearWrap = document.createElement("div");
+                const row = document.createElement("div");
+                row.className = "tree-year-row";
+                row.innerHTML = `<i class="fas fa-chevron-right tree-toggle"></i> <input type="checkbox" class="tree-year-check" value="${year}" checked> <span>${year}</span>`;
+                row.querySelector(".tree-toggle").onclick = function(e) { e.stopPropagation(); yearWrap.classList.toggle("tree-active"); };
+                const yearCheck = row.querySelector(".tree-year-check");
+                const monthsContainer = document.createElement("div");
+                monthsContainer.className = "tree-month-container";
+                
+                hierarchy[year].sort((a,b) => a.idx - b.idx).forEach(mObj => {
+                    const mRow = document.createElement("div");
+                    mRow.className = "tree-month-row";
+                    mRow.innerHTML = `<input type="checkbox" class="tree-month-check" data-year="${year}" value="${mObj.name}" checked> ${mObj.name}`;
+                    monthsContainer.appendChild(mRow);
+                });
+
+                yearWrap.appendChild(row); yearWrap.appendChild(monthsContainer); container.appendChild(yearWrap);
+                yearCheck.onchange = function() { monthsContainer.querySelectorAll(".tree-month-check").forEach(s => s.checked = yearCheck.checked); updateDash(); };
+            });
+            document.getElementById("all-date-check").onclick = function(e) { 
+                e.stopPropagation();
+                const state = this.checked; 
+                container.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = state); 
+                updateDash(); 
+            };
+        }
+
+        function getSelected(listId) { return Array.from(document.querySelectorAll(`.item-check-${listId}:checked`)).map(i => i.value); }
+        function getSelectedDateFilters() {
+            let selectedPairs = [];
+            document.querySelectorAll(".tree-month-check:checked").forEach(cb => { selectedPairs.push(cb.getAttribute("data-year") + "-" + cb.value); });
+            return selectedPairs;
+        }
+
+        function updateBtnText(btnId, selected, label) { 
+            const btn = document.getElementById(btnId); 
+            const total = document.getElementsByClassName(`item-check-${btnId.split('-')[1]}`).length; 
+            if(selected.length === 0) btn.innerHTML = "Seçim Yok ▼"; 
+            else if(selected.length === total) btn.innerHTML = "Hepsi ▼"; 
+            else btn.innerHTML = selected.length + " " + label + " ▼"; 
+        }
+
+        function updateDash() {
+            if(cleanData.length === 0) return;
+            const selDanisman = getSelected("list-danisman");
+            const selModel = getSelected("list-model");
+            const selDatePairs = getSelectedDateFilters();
+
+            updateBtnText("btn-danisman", selDanisman, "Danışman");
+            updateBtnText("btn-model", selModel, "Model");
+            
+            const totalMonths = document.querySelectorAll(".tree-month-check").length;
+            const selMonths = document.querySelectorAll(".tree-month-check:checked").length;
+            document.getElementById("btn-tarih").innerHTML = (selMonths === totalMonths) ? "Hepsi ▼" : selMonths + " Ay ▼";
+
+            const filtered = cleanData.filter(d => 
+                selDanisman.includes(d["Danışman Adı"]) &&
+                selModel.includes(d["Model"]) &&
+                selDatePairs.includes(d["_Year"] + "-" + d["_Month"])
+            );
+
+            document.getElementById("k-top").innerText = filtered.length;
+            const nSat = filtered.filter(d => d["Durum"] === "Satış").length;
+            document.getElementById("k-sat").innerText = nSat;
+            document.getElementById("k-ora").innerText = "%" + (filtered.length > 0 ? (nSat/filtered.length*100).toFixed(1) : 0);
+
+            renderCharts(filtered);
+        }
+
+        // --- CHART RENDER ---
         function renderCharts(data) {
-            // İSTEK 4: DİNAMİK MARJİN HESABI
             function getDynamicMargin(labels) {
-                const maxLen = labels.reduce((a,b) => Math.max(a, b.length), 0);
-                // Her karakter için yaklaşık 7px boşluk bırak
-                return Math.max(100, maxLen * 7);
+                if(!labels || labels.length === 0) return 100;
+                const maxLen = labels.reduce((a, b) => Math.max(a, b.length), 0);
+                return Math.max(100, maxLen * 7); // Uzun yazılara yer aç
             }
 
-            const baseLayout = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'white'} };
+            const baseLayout = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'white'}, margin:{t:40,l:40,r:20} };
             
             // Model Grafiği
             const models = [...new Set(data.map(d => d.Model))];
-            const marginB = getDynamicMargin(models); // Alt boşluk hesapla
+            const marginB = getDynamicMargin(models);
             
-            const countSatis = models.map(m => data.filter(d => d.Model === m && d.Durum === "Satış").length);
-            const countDiger = models.map(m => data.filter(d => d.Model === m && d.Durum !== "Satış").length);
+            const satisData = models.map(m => data.filter(d => d.Model === m && d.Durum === "Satış").length);
+            const digerData = models.map(m => data.filter(d => d.Model === m && d.Durum !== "Satış").length);
 
             Plotly.newPlot('c-model', 
-                [{x: models, y: countSatis, type:'bar', name:'Satış', marker:{color:'#2ecc71'}}, 
-                 {x: models, y: countDiger, type:'bar', name:'Diğer', marker:{color:'#e74c3c'}}],
-                {...baseLayout, title:'Model Performansı', barmode:'stack', margin: {b: marginB} } // Marjini uygula
+                [{ x: models, y: satisData, name: 'Satış', type: 'bar', marker:{color:'#2ecc71'} }, 
+                 { x: models, y: digerData, name: 'Diğer', type: 'bar', marker:{color:'#e74c3c'} }], 
+                { ...baseLayout, title: 'Model Performansı', barmode:'stack', margin:{b: marginB} }
             );
+
+            // Diğer Grafikler
+            const d1 = count(data, "Durum");
+            Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...baseLayout, title: 'Satış Durumu' });
             
-            // Diğer grafikler (Durum vb) standart...
-            const statusCounts = {}; data.forEach(d => statusCounts[d.Durum] = (statusCounts[d.Durum]||0)+1);
-            Plotly.newPlot('c-durum', [{values:Object.values(statusCounts), labels:Object.keys(statusCounts), type:'pie'}], {...baseLayout, title:'Genel Durum'});
+            const kData = count(data.filter(d => d.Durum !== "Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni");
+            Plotly.newPlot('c-kayip', [{ x: Object.keys(kData), y: Object.values(kData), type: 'bar', marker:{color: '#f1c40f'} }], { ...baseLayout, title: 'Kayıp Nedenleri' });
+
+            const lData = count(data, "Lead Kaynağı");
+            const marginL = getDynamicMargin(Object.keys(lData));
+            Plotly.newPlot('c-lead', [{ x: Object.keys(lData), y: Object.values(lData), type: 'bar', marker:{color: '#9b59b6'} }], { ...baseLayout, title: 'Lead Kaynağı', margin:{b: marginL} });
         }
+        function count(data, key) { const c = {}; data.forEach(d => c[d[key]] = (c[d[key]] || 0) + 1); return c; }
 
-        // --- SİMÜLASYON MANTIĞI ---
+        // --- SİMÜLASYON ---
         let simSelections = {};
-        const months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-
         function openSimulation() {
+            if(cleanData.length === 0) { alert("Veri yok!"); return; }
             document.getElementById('home-page').style.display = 'none';
             document.getElementById('simulation-page').style.display = 'block';
             goToStep(1);
         }
-
         function goToStep(step) {
             document.querySelectorAll('.sim-step').forEach(el => el.classList.remove('active'));
             document.getElementById('sim-step-' + step).classList.add('active');
-            
-            if(step === 1) renderSimGrid('grid-consultant', "Danışman Adı", (val) => { simSelections.cons = val; goToStep(2); });
-            if(step === 2) renderSimGrid('grid-model', "Model", (val) => { simSelections.model = val; goToStep(3); });
-            if(step === 3) {
-                const container = document.getElementById('grid-month'); container.innerHTML = "";
+            if(step===1) renderSimGrid('grid-consultant', 'Danışman Adı', (v)=>{ simSelections.cons=v; goToStep(2); });
+            if(step===2) renderSimGrid('grid-model', 'Model', (v)=>{ simSelections.model=v; goToStep(3); });
+            if(step===3) {
+                const c = document.getElementById('grid-month'); c.innerHTML="";
                 months.forEach(m => {
-                    let div = document.createElement('div'); div.className = 'selection-card';
-                    div.innerHTML = `<b>${m}</b>`;
-                    div.onclick = () => { simSelections.month = m; goToStep(4); initResultScreen(); };
-                    container.appendChild(div);
+                    let d = document.createElement('div'); d.className='selection-card';
+                    d.innerHTML=`<b>${m}</b>`; d.onclick=()=>{ simSelections.month=m; goToStep(4); initResult(); };
+                    c.appendChild(d);
                 });
             }
         }
-
-        function renderSimGrid(id, col, callback) {
-            const container = document.getElementById(id); container.innerHTML = "";
-            const items = [...new Set(cleanData.map(d => d[col]))].sort();
-            items.forEach(item => {
-                let div = document.createElement('div'); div.className = 'selection-card';
-                div.innerHTML = `<i class="fas fa-check-circle"></i><b>${item}</b>`;
-                div.onclick = () => callback(item);
-                container.appendChild(div);
+        function renderSimGrid(id, col, cb) {
+            const c = document.getElementById(id); c.innerHTML="";
+            const items = [...new Set(cleanData.map(d=>d[col]))].sort();
+            items.forEach(i => {
+                let d = document.createElement('div'); d.className='selection-card';
+                d.innerHTML=`<i class="fas fa-check-circle"></i><b>${i}</b>`; d.onclick=()=>cb(i);
+                c.appendChild(d);
             });
         }
-
-        function initResultScreen() {
-            // Selectleri doldur
-            const fillSelect = (id, items, selected) => {
-                const el = document.getElementById(id); el.innerHTML = "";
-                items.forEach(i => { let opt = document.createElement('option'); opt.value=i; opt.text=i; if(i===selected) opt.selected=true; el.appendChild(opt); });
+        function initResult() {
+            const fill = (id, items, sel) => {
+                const el = document.getElementById(id); el.innerHTML="";
+                items.forEach(i=>{ let o=document.createElement('option'); o.value=i; o.text=i; if(i===sel)o.selected=true; el.appendChild(o); });
             };
-            fillSelect('wi-cons', [...new Set(cleanData.map(d=>d["Danışman Adı"]))].sort(), simSelections.cons);
-            fillSelect('wi-model', [...new Set(cleanData.map(d=>d["Model"]))].sort(), simSelections.model);
-            fillSelect('wi-month', months, simSelections.month);
+            fill('wi-cons', [...new Set(cleanData.map(d=>d["Danışman Adı"]))].sort(), simSelections.cons);
+            fill('wi-model', [...new Set(cleanData.map(d=>d["Model"]))].sort(), simSelections.model);
+            fill('wi-month', months, simSelections.month);
             recalculateSim();
         }
-
         function recalculateSim() {
-            const c = document.getElementById('wi-cons').value;
-            const m = document.getElementById('wi-model').value;
-            const mo = document.getElementById('wi-month').value;
+            const c=document.getElementById('wi-cons').value;
+            const m=document.getElementById('wi-model').value;
+            const wC=parseInt(document.getElementById('w-cons').value);
+            const wM=parseInt(document.getElementById('w-model').value);
+            const wT=parseInt(document.getElementById('w-month').value);
             
-            // Basit Başarı Puanı Hesabı (Satış Adedi / Toplam Görüşme)
-            const getRate = (col, val) => {
-                const subset = cleanData.filter(d => d[col] === val);
-                if(subset.length === 0) return 0;
-                const sold = subset.filter(d => d.Durum === "Satış").length;
-                return (sold / subset.length) * 100;
+            const getR = (col, val) => {
+                const sub = cleanData.filter(d=>d[col]===val);
+                return sub.length ? (sub.filter(d=>d.Durum==="Satış").length/sub.length)*100 : 0;
             };
-
-            const rC = getRate("Danışman Adı", c);
-            const rM = getRate("Model", m);
-            const rMo = 20; // Ay verisi parse edilmediği için dummy, gerçekte tarih parse edilip bakılmalı.
-
-            const wC = parseInt(document.getElementById('w-cons').value);
-            const wM = parseInt(document.getElementById('w-model').value);
-            const wMo = parseInt(document.getElementById('w-month').value);
-            const totalW = wC + wM + wMo;
-
-            const final = ((rC*wC) + (rM*wM) + (rMo*wMo)) / totalW;
-            
+            const rC=getR("Danışman Adı",c); const rM=getR("Model",m); const rT=20; 
+            const final = ((rC*wC)+(rM*wM)+(rT*wT))/(wC+wM+wT);
             document.getElementById('result-score').innerText = "%" + final.toFixed(1);
-            document.getElementById('result-detail').innerText = `Danışman: %${rC.toFixed(0)} | Model: %${rM.toFixed(0)}`;
-
-            // Yapay Zeka Önerisi
+            document.getElementById('result-detail').innerText = `Danışman Başarısı: %${rC.toFixed(0)} | Model Başarısı: %${rM.toFixed(0)}`;
             let msg = "";
-            if(rM < 10) msg += `⚠️ ${m} modelinin dönüşümü düşük. `;
-            if(final < 30) msg += "💡 Farklı bir model veya danışman ile şansınız artabilir.";
-            document.getElementById('ai-suggestion').innerText = msg || "✅ Senaryo makul görünüyor.";
-        }
-
-        function openHome() {
-            document.getElementById('dashboard-page').style.display = 'none';
-            document.getElementById('simulation-page').style.display = 'none';
-            document.getElementById('home-page').style.display = 'flex';
-        }
-        function openDashboard() {
-            document.getElementById('home-page').style.display = 'none';
-            document.getElementById('dashboard-page').style.display = 'block';
-            renderCharts(cleanData);
+            if(rM<10) msg += `⚠️ ${m} modelinin satış oranı düşük. `;
+            if(final<30) msg += "💡 Farklı bir danışman veya model seçmeyi deneyin.";
+            document.getElementById('ai-suggestion').innerText = msg || "✅ Seçimler tutarlı görünüyor.";
         }
         function resetSim() { goToStep(1); }
+        function openHome() { document.getElementById('simulation-page').style.display='none'; document.getElementById('dashboard-page').style.display='none'; document.getElementById('home-page').style.display='flex'; }
 
         // --- AYARLAR ---
         let activeCategory = "Model";
         function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; setCategory(activeCategory); }
-        function saveAndCloseSettings() { localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); document.getElementById('settings-modal').style.display = 'none'; location.reload(); }
-        function discardAndCloseSettings() { document.getElementById('settings-modal').style.display = 'none'; location.reload(); } // Kaydetmeden çıkınca reload at ki eskiler gelsin
+        function saveAndCloseSettings() { localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); document.getElementById('settings-modal').style.display='none'; if(document.getElementById('dashboard-page').style.display==='block') { processData(); initFilters(); updateDash(); } }
+        function discardAndCloseSettings() { globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')); hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')); document.getElementById('settings-modal').style.display='none'; }
         
-        function setCategory(cat) { 
-            activeCategory = cat; 
-            renderRawList(); renderGroupList(); 
-        }
-
-        function renderRawList() {
-            const container = document.getElementById('raw-list'); container.innerHTML = "";
-            const items = [...new Set(rawData.map(d => d[activeCategory]))].sort();
+        function setCategory(cat) { activeCategory = cat; renderSettingsLists(); document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active')); event.target.classList.add('active'); }
+        function renderSettingsLists() {
+            const rd = document.getElementById('raw-list'); const gd = document.getElementById('group-list'); rd.innerHTML=""; gd.innerHTML="";
+            const items = [...new Set(rawData.map(d=>d[activeCategory]))].sort();
+            let assigned = []; for(let g in globalGroups[activeCategory]) assigned.push(...globalGroups[activeCategory][g]);
+            
             items.forEach(i => {
-                let div = document.createElement('div'); div.className = 'raw-item'; 
-                if(hiddenItems.includes(i)) div.classList.add('hidden-item');
-                div.innerText = i;
-                div.onclick = () => { div.classList.toggle('selected'); };
-                container.appendChild(div);
+                if(!assigned.includes(i)) {
+                    let d = document.createElement('div'); d.className='raw-item'; d.innerText=i;
+                    if(hiddenItems.includes(i)) d.classList.add('hidden-item');
+                    d.onclick=()=>{ d.classList.toggle('selected'); };
+                    rd.appendChild(d);
+                }
             });
+            for(let gName in globalGroups[activeCategory]) {
+                let div = document.createElement('div'); div.className='group-container';
+                div.innerHTML = `<div class="group-header">${gName} <button class="btn-action btn-danger" onclick="deleteGroup('${gName}')">Sil</button></div><div class="group-content">${globalGroups[activeCategory][gName].map(x=>`<span class="group-tag">${x}</span>`).join('')}</div>`;
+                gd.appendChild(div);
+            }
         }
-        
+        function createGroup() {
+            const name = document.getElementById('new-group-name').value;
+            if(!name) return;
+            if(!globalGroups[activeCategory]) globalGroups[activeCategory]={};
+            globalGroups[activeCategory][name] = [];
+            document.querySelectorAll('.raw-item.selected').forEach(el => {
+                globalGroups[activeCategory][name].push(el.innerText);
+            });
+            renderSettingsLists();
+        }
+        function deleteGroup(name) { delete globalGroups[activeCategory][name]; renderSettingsLists(); }
         function toggleHideSelected() {
             document.querySelectorAll('.raw-item.selected').forEach(el => {
                 const val = el.innerText;
-                if(hiddenItems.includes(val)) hiddenItems = hiddenItems.filter(x => x !== val);
+                if(hiddenItems.includes(val)) hiddenItems = hiddenItems.filter(x=>x!==val);
                 else hiddenItems.push(val);
             });
-            renderRawList();
+            renderSettingsLists();
         }
-        // ... (Diğer grup fonksiyonları aynı mantıkla eklenebilir) ...
     </script>
 </body>
 </html>
