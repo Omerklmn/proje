@@ -9,8 +9,10 @@
         body { background-color: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow-x: hidden; }
         
         /* ORTAK */
-        .btn-action { background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; margin-left: 5px; }
-        .btn-danger { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
+        .btn-action { background: #3498db; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-left: 5px; font-weight: bold; }
+        .btn-success { background: #27ae60; }
+        .btn-danger { background: #e74c3c; }
+        .btn-warning { background: #f39c12; color: black; }
         .btn-back { background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 10px; font-size: 14px; }
         .hidden { display: none !important; }
 
@@ -92,11 +94,14 @@
         .scroll-list { flex: 1; overflow-y: auto; padding-right: 5px; background: #181818; border-radius: 5px; padding: 5px; margin-bottom: 10px; }
         .raw-item { padding: 8px; margin: 3px 0; background: #333; border-radius: 4px; cursor: pointer; font-size: 13px; }
         .raw-item.selected { background: #f39c12; color: white; }
-        .group-container { margin-bottom: 10px; border: 1px solid #444; background: #2a2a2a; border-radius: 5px; }
-        .group-header { padding: 10px; background: #333; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; }
-        .group-content { padding: 5px; min-height: 40px; background: #222; }
-        .group-tag { display: inline-block; background: #00d4ff; color: black; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin: 2px; }
-        .hidden-item { opacity: 0.5; text-decoration: line-through; border-left: 3px solid red; }
+        
+        /* Grup kutusu tasarımı */
+        .group-container { margin-bottom: 15px; border: 1px solid #555; background: #2a2a2a; border-radius: 5px; overflow: hidden; }
+        .group-header { padding: 10px; background: #333; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; border-bottom: 1px solid #444; }
+        .group-content { padding: 8px; min-height: 40px; background: #222; display: flex; flex-wrap: wrap; gap: 5px; }
+        .group-tag { display: inline-flex; align-items: center; background: #00d4ff; color: black; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        
+        .hidden-item { opacity: 0.4; text-decoration: line-through; border-left: 3px solid red; background: #220000; }
         
         .tree-year-row { display: flex; align-items: center; background: #2a2a2a; padding: 5px; margin-top: 5px; border-radius: 4px; }
         .tree-toggle { cursor: pointer; margin-right: 8px; width: 15px; text-align: center; color: #aaa; }
@@ -127,26 +132,24 @@
             <div class="settings-main">
                 <h2 style="margin:0 0 10px 0;" id="settings-title">Model Gruplama</h2>
                 <div style="margin-bottom:10px;">
-                    <button class="btn-action" style="background:#f39c12; padding:8px;" onclick="toggleHideSelected()">👁️ Seçiliyi Gizle/Göster</button>
+                    <button class="btn-action btn-warning" style="padding:8px 15px;" onclick="toggleHideSelected()">👁️ Seçiliyi Gizle/Göster</button>
+                    <span style="font-size:12px; color:#aaa; margin-left:10px;">(Gizlenenler grafikte ve simülasyonda ASLA görünmez)</span>
                 </div>
                 <div class="work-area">
                     <div class="panel-box">
                         <div class="panel-title">1. Ham Veriler (Listeden Seç)</div>
                         <div class="scroll-list" id="raw-list"></div>
-                        <div style="font-size:11px; color:#aaa;">* Birden fazla seçebilirsiniz</div>
+                        <div style="font-size:11px; color:#aaa;">* Çoklu seçim için tıklayın</div>
                     </div>
                     <div style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
                         <i class="fas fa-chevron-right" style="font-size:24px; color:#555;"></i>
                     </div>
                     <div class="panel-box">
-                        <div class="panel-title">2. Temiz Gruplar</div>
+                        <div class="panel-title">2. Gruplar</div>
                         <div class="scroll-list" id="group-list"></div>
-                        <div style="border-top:1px solid #444; padding-top:10px;">
-                            <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px;">Seçili Olanları Gruba Ekle:</label>
-                            <div style="display:flex; gap:5px;">
-                                <input type="text" id="new-group-name" placeholder="Grup Adı Yazın..." style="flex:1; padding:8px; border-radius:5px; border:none; background:#333; color:white;">
-                                <button class="btn-action" style="background:#27ae60; width:100px;" onclick="createGroup()">EKLE / OLUŞTUR</button>
-                            </div>
+                        <div style="border-top:1px solid #444; padding-top:10px; display:flex; gap:10px;">
+                            <input type="text" id="new-group-name" placeholder="Yeni Grup Adı..." style="flex:1; padding:8px; border-radius:5px; border:none; background:#333; color:white;">
+                            <button class="btn-action btn-success" style="width:100px;" onclick="createNewGroup()">OLUŞTUR</button>
                         </div>
                     </div>
                 </div>
@@ -257,41 +260,61 @@
     </div>
 
     <script>
-        // GLOBAL DEĞİŞKENLER (EN TEPEDE)
+        // GLOBAL DEĞİŞKENLER
         let rawData = [[JSON_DATA]];
         let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
         let hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')) || [];
         let cleanData = [];
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
-        // --- SAYFA TIKLAMA YÖNETİMİ (DROPDOWN KAPATMA) ---
+        // UI HELPERS
         window.onclick = function(event) {
             if (!event.target.matches('.select-btn')) {
                 var dropdowns = document.getElementsByClassName("checkbox-list");
                 for (var i = 0; i < dropdowns.length; i++) {
                     var openDropdown = dropdowns[i];
-                    if (openDropdown.classList.contains('show')) {
-                        openDropdown.classList.remove('show');
-                    }
+                    if (openDropdown.classList.contains('show')) openDropdown.classList.remove('show');
                 }
             }
         }
         function toggleDropdown(id) {
             var dropdowns = document.getElementsByClassName("checkbox-list");
-            for (var i = 0; i < dropdowns.length; i++) {
-                if (dropdowns[i].id !== id) dropdowns[i].classList.remove('show');
-            }
+            for (var i = 0; i < dropdowns.length; i++) { if (dropdowns[i].id !== id) dropdowns[i].classList.remove('show'); }
             document.getElementById(id).classList.toggle("show");
             event.stopPropagation();
         }
 
-        // --- VERİ İŞLEME VE TEMİZLİK ---
-        function cleanGroups() {
+        // --- VERİ İŞLEME (KÖKTEN ÇÖZÜM) ---
+        // 1. Önce gizlileri at. 2. Sonra Grupla. 3. Sonuç tüm sistemde kullanılır.
+        function processData() {
+            // Ham veride olmayan grup elemanlarını temizle
             const availableModels = new Set(rawData.map(d => d["Model"]));
             for(let gName in globalGroups["Model"]) {
                 globalGroups["Model"][gName] = globalGroups["Model"][gName].filter(m => availableModels.has(m));
             }
-            localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups));
+
+            cleanData = rawData
+                // ADIM 1: GİZLEME (Ham veri adıyla kontrol et)
+                .filter(d => !hiddenItems.includes(d["Model"]))
+                .map(d => {
+                    let row = {...d};
+                    // ADIM 2: GRUPLAMA
+                    for (let cat in globalGroups) {
+                        if (globalGroups[cat]) {
+                            for (let gName in globalGroups[cat]) {
+                                // Eğer bu satırın değeri grubun içindeyse, değerini grup adıyla değiştir
+                                if (globalGroups[cat][gName].includes(d[cat])) {
+                                    row[cat] = gName; 
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    // Tarih işleme
+                    let p = parseDate(d["Tarih"]);
+                    row["_Year"] = p.y; row["_Month"] = p.m; row["_MonthIdx"] = p.idx;
+                    return row;
+                });
         }
 
         function parseDate(dateStr) {
@@ -299,25 +322,6 @@
             let d = new Date(dateStr);
             if(isNaN(d.getTime())) return { y: "Diğer", m: "Belirtilmemiş", idx: 99 };
             return { y: d.getFullYear().toString(), m: monthNames[d.getMonth()], idx: d.getMonth() };
-        }
-
-        function processData() {
-            if(rawData.length > 0) cleanGroups();
-            cleanData = rawData.map(d => {
-                let row = {...d};
-                for (let cat in globalGroups) {
-                    if (globalGroups[cat]) {
-                        for (let gName in globalGroups[cat]) {
-                            if (globalGroups[cat][gName].includes(d[cat])) {
-                                row[cat] = gName; break;
-                            }
-                        }
-                    }
-                }
-                let p = parseDate(d["Tarih"]);
-                row["_Year"] = p.y; row["_Month"] = p.m; row["_MonthIdx"] = p.idx;
-                return row;
-            }).filter(d => !hiddenItems.includes(d["Model"]));
         }
 
         function openDashboard() {
@@ -329,157 +333,74 @@
             updateDash();
         }
 
-        // --- FİLTRELER ---
+        // --- FİLTRELER VE CHART (Aynı mantık, cleanData kullanıyor) ---
         function initFilters() {
             if(cleanData.length === 0) return;
             setupChecklist("list-danisman", [...new Set(cleanData.map(d => d["Danışman Adı"]))].sort(), "btn-danisman");
             setupChecklist("list-model", [...new Set(cleanData.map(d => d["Model"]))].sort(), "btn-model");
             setupDateFilter();
         }
-
+        // ... (Checklist ve DateFilter kodları öncekiyle aynı, cleanData kullandığı için sorunsuz) ...
         function setupChecklist(listId, items, btnId) {
-            const container = document.getElementById(listId);
-            container.innerHTML = "";
-            const allLabel = document.createElement("label");
-            allLabel.className = "select-all-label";
-            allLabel.innerHTML = `<input type="checkbox" id="all-${listId}" checked> (Tümünü Seç)`;
-            container.appendChild(allLabel);
-            items.forEach(item => {
-                if(item) {
-                    const lbl = document.createElement("label");
-                    lbl.innerHTML = `<input type="checkbox" class="item-check-${listId}" value="${item}" checked> ${item}`;
-                    container.appendChild(lbl);
-                }
-            });
-            const allCheck = document.getElementById(`all-${listId}`);
-            const itemChecks = document.getElementsByClassName(`item-check-${listId}`);
+            const container = document.getElementById(listId); container.innerHTML = "";
+            const allLabel = document.createElement("label"); allLabel.className = "select-all-label"; allLabel.innerHTML = `<input type="checkbox" id="all-${listId}" checked> (Tümünü Seç)`; container.appendChild(allLabel);
+            items.forEach(item => { if(item) { const lbl = document.createElement("label"); lbl.innerHTML = `<input type="checkbox" class="item-check-${listId}" value="${item}" checked> ${item}`; container.appendChild(lbl); } });
+            const allCheck = document.getElementById(`all-${listId}`); const itemChecks = document.getElementsByClassName(`item-check-${listId}`);
             allCheck.onclick = (e) => { e.stopPropagation(); for(let c of itemChecks) c.checked = allCheck.checked; updateDash(); };
             container.onchange = (e) => { if(e.target !== allCheck) allCheck.checked = (itemChecks.length === Array.from(itemChecks).filter(c => c.checked).length); updateDash(); };
             container.onclick = (e) => e.stopPropagation();
         }
-
         function setupDateFilter() {
-            const container = document.getElementById("list-tarih");
-            container.onclick = (e) => e.stopPropagation();
-            container.innerHTML = "";
-            let hierarchy = {};
-            cleanData.forEach(d => {
-                let y = d._Year; let m = d._Month; let idx = d._MonthIdx;
-                if(!hierarchy[y]) hierarchy[y] = [];
-                if(!hierarchy[y].find(x => x.name === m)) hierarchy[y].push({ name: m, idx: idx });
-            });
-            
-            const allDiv = document.createElement("div");
-            allDiv.innerHTML = `<label class="select-all-label"><input type="checkbox" id="all-date-check" checked> (Tüm Tarihler)</label>`;
-            container.appendChild(allDiv);
-
+            const container = document.getElementById("list-tarih"); container.onclick = (e) => e.stopPropagation(); container.innerHTML = "";
+            let hierarchy = {}; cleanData.forEach(d => { let y = d._Year; let m = d._Month; let idx = d._MonthIdx; if(!hierarchy[y]) hierarchy[y] = []; if(!hierarchy[y].find(x => x.name === m)) hierarchy[y].push({ name: m, idx: idx }); });
+            const allDiv = document.createElement("div"); allDiv.innerHTML = `<label class="select-all-label"><input type="checkbox" id="all-date-check" checked> (Tüm Tarihler)</label>`; container.appendChild(allDiv);
             Object.keys(hierarchy).sort().reverse().forEach(year => {
-                const yearWrap = document.createElement("div");
-                const row = document.createElement("div");
-                row.className = "tree-year-row";
-                row.innerHTML = `<i class="fas fa-chevron-right tree-toggle"></i> <input type="checkbox" class="tree-year-check" value="${year}" checked> <span>${year}</span>`;
+                const yearWrap = document.createElement("div"); const row = document.createElement("div"); row.className = "tree-year-row"; row.innerHTML = `<i class="fas fa-chevron-right tree-toggle"></i> <input type="checkbox" class="tree-year-check" value="${year}" checked> <span>${year}</span>`;
                 row.querySelector(".tree-toggle").onclick = function(e) { e.stopPropagation(); yearWrap.classList.toggle("tree-active"); };
-                const yearCheck = row.querySelector(".tree-year-check");
-                const monthsContainer = document.createElement("div");
-                monthsContainer.className = "tree-month-container";
-                
-                hierarchy[year].sort((a,b) => a.idx - b.idx).forEach(mObj => {
-                    const mRow = document.createElement("div");
-                    mRow.className = "tree-month-row";
-                    mRow.innerHTML = `<input type="checkbox" class="tree-month-check" data-year="${year}" value="${mObj.name}" checked> ${mObj.name}`;
-                    monthsContainer.appendChild(mRow);
-                });
-
+                const yearCheck = row.querySelector(".tree-year-check"); const monthsContainer = document.createElement("div"); monthsContainer.className = "tree-month-container";
+                hierarchy[year].sort((a,b) => a.idx - b.idx).forEach(mObj => { const mRow = document.createElement("div"); mRow.className = "tree-month-row"; mRow.innerHTML = `<input type="checkbox" class="tree-month-check" data-year="${year}" value="${mObj.name}" checked> ${mObj.name}`; monthsContainer.appendChild(mRow); });
                 yearWrap.appendChild(row); yearWrap.appendChild(monthsContainer); container.appendChild(yearWrap);
                 yearCheck.onchange = function() { monthsContainer.querySelectorAll(".tree-month-check").forEach(s => s.checked = yearCheck.checked); updateDash(); };
             });
-            document.getElementById("all-date-check").onclick = function(e) { 
-                e.stopPropagation();
-                const state = this.checked; 
-                container.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = state); 
-                updateDash(); 
-            };
+            document.getElementById("all-date-check").onclick = function(e) { e.stopPropagation(); const state = this.checked; container.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = state); updateDash(); };
         }
-
         function getSelected(listId) { return Array.from(document.querySelectorAll(`.item-check-${listId}:checked`)).map(i => i.value); }
-        function getSelectedDateFilters() {
-            let selectedPairs = [];
-            document.querySelectorAll(".tree-month-check:checked").forEach(cb => { selectedPairs.push(cb.getAttribute("data-year") + "-" + cb.value); });
-            return selectedPairs;
-        }
-
-        function updateBtnText(btnId, selected, label) { 
-            const btn = document.getElementById(btnId); 
-            const total = document.getElementsByClassName(`item-check-${btnId.split('-')[1]}`).length; 
-            if(selected.length === 0) btn.innerHTML = "Seçim Yok ▼"; 
-            else if(selected.length === total) btn.innerHTML = "Hepsi ▼"; 
-            else btn.innerHTML = selected.length + " " + label + " ▼"; 
-        }
-
+        function getSelectedDateFilters() { let selectedPairs = []; document.querySelectorAll(".tree-month-check:checked").forEach(cb => { selectedPairs.push(cb.getAttribute("data-year") + "-" + cb.value); }); return selectedPairs; }
+        function updateBtnText(btnId, selected, label) { const btn = document.getElementById(btnId); const total = document.getElementsByClassName(`item-check-${btnId.split('-')[1]}`).length; if(selected.length === 0) btn.innerHTML = "Seçim Yok ▼"; else if(selected.length === total) btn.innerHTML = "Hepsi ▼"; else btn.innerHTML = selected.length + " " + label + " ▼"; }
+        
         function updateDash() {
             if(cleanData.length === 0) return;
             const selDanisman = getSelected("list-danisman");
             const selModel = getSelected("list-model");
             const selDatePairs = getSelectedDateFilters();
-
-            updateBtnText("btn-danisman", selDanisman, "Danışman");
-            updateBtnText("btn-model", selModel, "Model");
-            
-            const totalMonths = document.querySelectorAll(".tree-month-check").length;
-            const selMonths = document.querySelectorAll(".tree-month-check:checked").length;
-            document.getElementById("btn-tarih").innerHTML = (selMonths === totalMonths) ? "Hepsi ▼" : selMonths + " Ay ▼";
-
-            const filtered = cleanData.filter(d => 
-                selDanisman.includes(d["Danışman Adı"]) &&
-                selModel.includes(d["Model"]) &&
-                selDatePairs.includes(d["_Year"] + "-" + d["_Month"])
-            );
-
+            updateBtnText("btn-danisman", selDanisman, "Danışman"); updateBtnText("btn-model", selModel, "Model");
+            const totalMonths = document.querySelectorAll(".tree-month-check").length; const selMonths = document.querySelectorAll(".tree-month-check:checked").length; document.getElementById("btn-tarih").innerHTML = (selMonths === totalMonths) ? "Hepsi ▼" : selMonths + " Ay ▼";
+            const filtered = cleanData.filter(d => selDanisman.includes(d["Danışman Adı"]) && selModel.includes(d["Model"]) && selDatePairs.includes(d["_Year"] + "-" + d["_Month"]));
             document.getElementById("k-top").innerText = filtered.length;
             const nSat = filtered.filter(d => d["Durum"] === "Satış").length;
             document.getElementById("k-sat").innerText = nSat;
             document.getElementById("k-ora").innerText = "%" + (filtered.length > 0 ? (nSat/filtered.length*100).toFixed(1) : 0);
-
             renderCharts(filtered);
         }
-
-        // --- CHART RENDER ---
         function renderCharts(data) {
-            function getDynamicMargin(labels) {
-                if(!labels || labels.length === 0) return 100;
-                const maxLen = labels.reduce((a, b) => Math.max(a, b.length), 0);
-                return Math.max(100, maxLen * 7); // Uzun yazılara yer aç
-            }
-
+            function getDynamicMargin(labels) { if(!labels || labels.length === 0) return 100; const maxLen = labels.reduce((a, b) => Math.max(a, b.length), 0); return Math.max(100, maxLen * 7); }
             const baseLayout = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'white'}, margin:{t:40,l:40,r:20} };
-            
-            const models = [...new Set(data.map(d => d.Model))];
-            const marginB = getDynamicMargin(models);
-            
+            const models = [...new Set(data.map(d => d.Model))]; const marginB = getDynamicMargin(models);
             const satisData = models.map(m => data.filter(d => d.Model === m && d.Durum === "Satış").length);
             const digerData = models.map(m => data.filter(d => d.Model === m && d.Durum !== "Satış").length);
-
-            Plotly.newPlot('c-model', 
-                [{ x: models, y: satisData, name: 'Satış', type: 'bar', marker:{color:'#2ecc71'} }, 
-                 { x: models, y: digerData, name: 'Diğer', type: 'bar', marker:{color:'#e74c3c'} }], 
-                { ...baseLayout, title: 'Model Performansı', barmode:'stack', margin:{b: marginB} }
-            );
-
-            const d1 = count(data, "Durum");
-            Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...baseLayout, title: 'Satış Durumu' });
-            
-            const kData = count(data.filter(d => d.Durum !== "Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni");
-            Plotly.newPlot('c-kayip', [{ x: Object.keys(kData), y: Object.values(kData), type: 'bar', marker:{color: '#f1c40f'} }], { ...baseLayout, title: 'Kayıp Nedenleri' });
-
-            const lData = count(data, "Lead Kaynağı");
-            const marginL = getDynamicMargin(Object.keys(lData));
-            Plotly.newPlot('c-lead', [{ x: Object.keys(lData), y: Object.values(lData), type: 'bar', marker:{color: '#9b59b6'} }], { ...baseLayout, title: 'Lead Kaynağı', margin:{b: marginL} });
+            Plotly.newPlot('c-model', [{ x: models, y: satisData, name: 'Satış', type: 'bar', marker:{color:'#2ecc71'} }, { x: models, y: digerData, name: 'Diğer', type: 'bar', marker:{color:'#e74c3c'} }], { ...baseLayout, title: 'Model Performansı', barmode:'stack', margin:{b: marginB} });
+            const d1 = count(data, "Durum"); Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...baseLayout, title: 'Satış Durumu' });
+            const kData = count(data.filter(d => d.Durum !== "Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni"); Plotly.newPlot('c-kayip', [{ x: Object.keys(kData), y: Object.values(kData), type: 'bar', marker:{color: '#f1c40f'} }], { ...baseLayout, title: 'Kayıp Nedenleri' });
+            const lData = count(data, "Lead Kaynağı"); const marginL = getDynamicMargin(Object.keys(lData)); Plotly.newPlot('c-lead', [{ x: Object.keys(lData), y: Object.values(lData), type: 'bar', marker:{color: '#9b59b6'} }], { ...baseLayout, title: 'Lead Kaynağı', margin:{b: marginL} });
         }
         function count(data, key) { const c = {}; data.forEach(d => c[d[key]] = (c[d[key]] || 0) + 1); return c; }
 
         // --- SİMÜLASYON ---
         let simSelections = {};
         function openSimulation() {
+            if(rawData.length===0) return;
+            // Simülasyona girmeden önce temizliği yap ki gruplar görünsün
+            processData(); 
             if(cleanData.length === 0) { alert("Veri yok!"); return; }
             document.getElementById('home-page').style.display = 'none';
             document.getElementById('simulation-page').style.display = 'block';
@@ -491,7 +412,6 @@
             if(step===1) renderSimGrid('grid-consultant', 'Danışman Adı', (v)=>{ simSelections.cons=v; goToStep(2); });
             if(step===2) renderSimGrid('grid-model', 'Model', (v)=>{ simSelections.model=v; goToStep(3); });
             if(step===3) {
-                // AY LİSTESİ DÜZELTİLDİ: GLOBAL DİZİYİ KULLAN
                 const c = document.getElementById('grid-month'); c.innerHTML="";
                 monthNames.forEach(m => {
                     let d = document.createElement('div'); d.className='selection-card';
@@ -502,6 +422,7 @@
         }
         function renderSimGrid(id, col, cb) {
             const c = document.getElementById(id); c.innerHTML="";
+            // cleanData kullandığımız için artık Model kısmında GRUP İSİMLERİ gelecek.
             const items = [...new Set(cleanData.map(d=>d[col]))].sort();
             items.forEach(i => {
                 let d = document.createElement('div'); d.className='selection-card';
@@ -525,7 +446,6 @@
             const wC=parseInt(document.getElementById('w-cons').value);
             const wM=parseInt(document.getElementById('w-model').value);
             const wT=parseInt(document.getElementById('w-month').value);
-            
             const getR = (col, val) => {
                 const sub = cleanData.filter(d=>d[col]===val);
                 return sub.length ? (sub.filter(d=>d.Durum==="Satış").length/sub.length)*100 : 0;
@@ -564,35 +484,41 @@
             });
             for(let gName in globalGroups[activeCategory]) {
                 let div = document.createElement('div'); div.className='group-container';
-                div.innerHTML = `<div class="group-header">${gName} <button class="btn-action btn-danger" onclick="deleteGroup('${gName}')">Sil</button></div><div class="group-content">${globalGroups[activeCategory][gName].map(x=>`<span class="group-tag">${x}</span>`).join('')}</div>`;
+                div.innerHTML = `<div class="group-header"><span>${gName}</span> <div><button class="btn-action btn-success" onclick="addSelectedToGroup('${gName}')">Seçiliyi Ekle</button> <button class="btn-action btn-danger" onclick="deleteGroup('${gName}')">Sil</button></div></div><div class="group-content">${globalGroups[activeCategory][gName].map(x=>`<span class="group-tag">${x} <i class="fas fa-times" style="cursor:pointer;margin-left:3px;" onclick="removeFromGroup('${gName}','${x}')"></i></span>`).join('')}</div>`;
                 gd.appendChild(div);
             }
         }
         
-        // GRUP EKLEME FONKSİYONU (DÜZELTİLDİ: SEÇİLİYİ EKLE)
-        function createGroup() {
+        function createNewGroup() {
             const name = document.getElementById('new-group-name').value;
-            const selectedItems = document.querySelectorAll('.raw-item.selected');
-            
-            if(!name) { alert("Lütfen bir grup adı girin."); return; }
-            if(selectedItems.length === 0) { alert("Lütfen listeden en az bir veri seçin."); return; }
-            
+            if(!name) { alert("Lütfen grup adı girin."); return; }
             if(!globalGroups[activeCategory]) globalGroups[activeCategory]={};
-            if(!globalGroups[activeCategory][name]) globalGroups[activeCategory][name] = [];
+            if(globalGroups[activeCategory][name]) { alert("Bu grup zaten var."); return; }
+            globalGroups[activeCategory][name] = [];
+            document.getElementById('new-group-name').value = "";
+            renderSettingsLists();
+        }
+
+        function addSelectedToGroup(gName) {
+            const selectedItems = document.querySelectorAll('.raw-item.selected');
+            if(selectedItems.length === 0) { alert("Listeden eklenecek verileri seçin."); return; }
             
             selectedItems.forEach(el => {
                 const val = el.innerText;
-                // Eğer zaten bu gruptaysa ekleme
-                if(!globalGroups[activeCategory][name].includes(val)) {
-                    globalGroups[activeCategory][name].push(val);
+                if(!globalGroups[activeCategory][gName].includes(val)) {
+                    globalGroups[activeCategory][gName].push(val);
                 }
             });
-            
-            document.getElementById('new-group-name').value = ""; // Kutuyu temizle
+            renderSettingsLists();
+        }
+        
+        function removeFromGroup(gName, item) {
+            globalGroups[activeCategory][gName] = globalGroups[activeCategory][gName].filter(x => x !== item);
             renderSettingsLists();
         }
         
         function deleteGroup(name) { delete globalGroups[activeCategory][name]; renderSettingsLists(); }
+        
         function toggleHideSelected() {
             document.querySelectorAll('.raw-item.selected').forEach(el => {
                 const val = el.innerText;
