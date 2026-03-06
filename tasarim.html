@@ -10,6 +10,7 @@
         
         /* ORTAK */
         .btn-action { background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; margin-left: 5px; }
+        .btn-danger { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
         .btn-back { background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 10px; font-size: 14px; }
         .hidden { display: none !important; }
 
@@ -31,15 +32,13 @@
         #dashboard-page, #simulation-page { display: none; padding: 20px; background-color: #0e1117; min-height: 100vh; }
         .dash-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00d4ff; padding-bottom: 10px; margin-bottom: 20px; }
         
-        /* FİLTRELER (GÜNCELLENDİ: Z-INDEX ARTIRILDI) */
+        /* FİLTRELER */
         .filter-container { display: flex; gap: 15px; background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; flex-wrap: wrap; position: relative; z-index: 1001; }
         .multi-select-box { position: relative; display: flex; flex-direction: column; width: 200px; }
         .select-btn { background: #333; color: white; padding: 10px; border-radius: 5px; cursor: pointer; border: 1px solid #555; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
         .select-btn:after { content: '▼'; float: right; font-size: 10px; margin-top: 3px; }
-        
-        /* Checkbox Listesi Artık Tıklayınca Açılacak */
         .checkbox-list { display: none; position: absolute; top: 100%; left: 0; width: 250px; background: #222; border: 1px solid #555; z-index: 9999; max-height: 350px; overflow-y: auto; padding: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.8); border-radius: 5px; margin-top: 5px; }
-        .checkbox-list.show { display: block; } /* JS ile tetiklenecek */
+        .checkbox-list.show { display: block; }
         .checkbox-list label { display: block; padding: 5px 0; font-size: 13px; cursor: pointer; border-bottom: 1px solid #333; }
         .checkbox-list label:hover { background: #333; }
         .select-all-label { font-weight: bold; color: #00d4ff; border-bottom: 2px solid #444 !important; margin-bottom: 5px; }
@@ -89,8 +88,8 @@
         .cat-btn.active { background: #00d4ff; color: black; font-weight: bold; }
         .settings-main { flex: 1; padding: 20px; display: flex; flex-direction: column; }
         .work-area { display: flex; flex: 1; gap: 20px; overflow: hidden; }
-        .panel-box { flex: 1; background: #222; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; border: 1px solid #444; }
-        .scroll-list { flex: 1; overflow-y: auto; padding-right: 5px; background: #181818; border-radius: 5px; padding: 5px; }
+        .panel-box { flex: 1; background: #222; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; border: 1px solid #444; position: relative;}
+        .scroll-list { flex: 1; overflow-y: auto; padding-right: 5px; background: #181818; border-radius: 5px; padding: 5px; margin-bottom: 10px; }
         .raw-item { padding: 8px; margin: 3px 0; background: #333; border-radius: 4px; cursor: pointer; font-size: 13px; }
         .raw-item.selected { background: #f39c12; color: white; }
         .group-container { margin-bottom: 10px; border: 1px solid #444; background: #2a2a2a; border-radius: 5px; }
@@ -132,8 +131,9 @@
                 </div>
                 <div class="work-area">
                     <div class="panel-box">
-                        <div class="panel-title">1. Ham Veriler</div>
+                        <div class="panel-title">1. Ham Veriler (Listeden Seç)</div>
                         <div class="scroll-list" id="raw-list"></div>
+                        <div style="font-size:11px; color:#aaa;">* Birden fazla seçebilirsiniz</div>
                     </div>
                     <div style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
                         <i class="fas fa-chevron-right" style="font-size:24px; color:#555;"></i>
@@ -141,9 +141,12 @@
                     <div class="panel-box">
                         <div class="panel-title">2. Temiz Gruplar</div>
                         <div class="scroll-list" id="group-list"></div>
-                        <div style="display:flex; gap:5px; margin-top:10px;">
-                            <input type="text" id="new-group-name" placeholder="Yeni Grup Adı..." style="flex:1; padding:8px; border-radius:5px; border:none;">
-                            <button class="btn-action" style="background:#27ae60;" onclick="createGroup()">+ Oluştur</button>
+                        <div style="border-top:1px solid #444; padding-top:10px;">
+                            <label style="font-size:12px; color:#aaa; display:block; margin-bottom:5px;">Seçili Olanları Gruba Ekle:</label>
+                            <div style="display:flex; gap:5px;">
+                                <input type="text" id="new-group-name" placeholder="Grup Adı Yazın..." style="flex:1; padding:8px; border-radius:5px; border:none; background:#333; color:white;">
+                                <button class="btn-action" style="background:#27ae60; width:100px;" onclick="createGroup()">EKLE / OLUŞTUR</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -254,10 +257,12 @@
     </div>
 
     <script>
+        // GLOBAL DEĞİŞKENLER (EN TEPEDE)
         let rawData = [[JSON_DATA]];
         let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
         let hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')) || [];
         let cleanData = [];
+        const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
         // --- SAYFA TIKLAMA YÖNETİMİ (DROPDOWN KAPATMA) ---
         window.onclick = function(event) {
@@ -289,7 +294,6 @@
             localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups));
         }
 
-        const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
         function parseDate(dateStr) {
             if(!dateStr || dateStr === "Belirtilmemiş" || dateStr === "nan") return { y: "Diğer", m: "Belirtilmemiş", idx: 99 };
             let d = new Date(dateStr);
@@ -351,7 +355,6 @@
             const itemChecks = document.getElementsByClassName(`item-check-${listId}`);
             allCheck.onclick = (e) => { e.stopPropagation(); for(let c of itemChecks) c.checked = allCheck.checked; updateDash(); };
             container.onchange = (e) => { if(e.target !== allCheck) allCheck.checked = (itemChecks.length === Array.from(itemChecks).filter(c => c.checked).length); updateDash(); };
-            // Tıklamaların dropdown'ı kapatmamasını sağla
             container.onclick = (e) => e.stopPropagation();
         }
 
@@ -450,7 +453,6 @@
 
             const baseLayout = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'white'}, margin:{t:40,l:40,r:20} };
             
-            // Model Grafiği
             const models = [...new Set(data.map(d => d.Model))];
             const marginB = getDynamicMargin(models);
             
@@ -463,7 +465,6 @@
                 { ...baseLayout, title: 'Model Performansı', barmode:'stack', margin:{b: marginB} }
             );
 
-            // Diğer Grafikler
             const d1 = count(data, "Durum");
             Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...baseLayout, title: 'Satış Durumu' });
             
@@ -490,8 +491,9 @@
             if(step===1) renderSimGrid('grid-consultant', 'Danışman Adı', (v)=>{ simSelections.cons=v; goToStep(2); });
             if(step===2) renderSimGrid('grid-model', 'Model', (v)=>{ simSelections.model=v; goToStep(3); });
             if(step===3) {
+                // AY LİSTESİ DÜZELTİLDİ: GLOBAL DİZİYİ KULLAN
                 const c = document.getElementById('grid-month'); c.innerHTML="";
-                months.forEach(m => {
+                monthNames.forEach(m => {
                     let d = document.createElement('div'); d.className='selection-card';
                     d.innerHTML=`<b>${m}</b>`; d.onclick=()=>{ simSelections.month=m; goToStep(4); initResult(); };
                     c.appendChild(d);
@@ -514,7 +516,7 @@
             };
             fill('wi-cons', [...new Set(cleanData.map(d=>d["Danışman Adı"]))].sort(), simSelections.cons);
             fill('wi-model', [...new Set(cleanData.map(d=>d["Model"]))].sort(), simSelections.model);
-            fill('wi-month', months, simSelections.month);
+            fill('wi-month', monthNames, simSelections.month);
             recalculateSim();
         }
         function recalculateSim() {
@@ -566,16 +568,30 @@
                 gd.appendChild(div);
             }
         }
+        
+        // GRUP EKLEME FONKSİYONU (DÜZELTİLDİ: SEÇİLİYİ EKLE)
         function createGroup() {
             const name = document.getElementById('new-group-name').value;
-            if(!name) return;
+            const selectedItems = document.querySelectorAll('.raw-item.selected');
+            
+            if(!name) { alert("Lütfen bir grup adı girin."); return; }
+            if(selectedItems.length === 0) { alert("Lütfen listeden en az bir veri seçin."); return; }
+            
             if(!globalGroups[activeCategory]) globalGroups[activeCategory]={};
-            globalGroups[activeCategory][name] = [];
-            document.querySelectorAll('.raw-item.selected').forEach(el => {
-                globalGroups[activeCategory][name].push(el.innerText);
+            if(!globalGroups[activeCategory][name]) globalGroups[activeCategory][name] = [];
+            
+            selectedItems.forEach(el => {
+                const val = el.innerText;
+                // Eğer zaten bu gruptaysa ekleme
+                if(!globalGroups[activeCategory][name].includes(val)) {
+                    globalGroups[activeCategory][name].push(val);
+                }
             });
+            
+            document.getElementById('new-group-name').value = ""; // Kutuyu temizle
             renderSettingsLists();
         }
+        
         function deleteGroup(name) { delete globalGroups[activeCategory][name]; renderSettingsLists(); }
         function toggleHideSelected() {
             document.querySelectorAll('.raw-item.selected').forEach(el => {
