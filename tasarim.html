@@ -95,13 +95,13 @@
         .raw-item { padding: 8px; margin: 3px 0; background: #333; border-radius: 4px; cursor: pointer; font-size: 13px; }
         .raw-item.selected { background: #f39c12; color: white; }
         
-        /* Grup kutusu tasarımı */
         .group-container { margin-bottom: 15px; border: 1px solid #555; background: #2a2a2a; border-radius: 5px; overflow: hidden; }
         .group-header { padding: 10px; background: #333; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; border-bottom: 1px solid #444; }
         .group-content { padding: 8px; min-height: 40px; background: #222; display: flex; flex-wrap: wrap; gap: 5px; }
         .group-tag { display: inline-flex; align-items: center; background: #00d4ff; color: black; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
         
-        .hidden-item { opacity: 0.4; text-decoration: line-through; border-left: 3px solid red; background: #220000; }
+        /* GİZLİ ÖĞE STİLİ - Düzeltildi */
+        .hidden-item { opacity: 0.4; text-decoration: line-through; border-left: 3px solid red; background: #300 !important; color: #aaa !important; }
         
         .tree-year-row { display: flex; align-items: center; background: #2a2a2a; padding: 5px; margin-top: 5px; border-radius: 4px; }
         .tree-toggle { cursor: pointer; margin-right: 8px; width: 15px; text-align: center; color: #aaa; }
@@ -267,7 +267,6 @@
         let cleanData = [];
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
-        // UI HELPERS
         window.onclick = function(event) {
             if (!event.target.matches('.select-btn')) {
                 var dropdowns = document.getElementsByClassName("checkbox-list");
@@ -284,25 +283,22 @@
             event.stopPropagation();
         }
 
-        // --- VERİ İŞLEME (KÖKTEN ÇÖZÜM) ---
-        // 1. Önce gizlileri at. 2. Sonra Grupla. 3. Sonuç tüm sistemde kullanılır.
+        // --- VERİ İŞLEME (GİZLEME DÜZELTİLDİ) ---
         function processData() {
-            // Ham veride olmayan grup elemanlarını temizle
             const availableModels = new Set(rawData.map(d => d["Model"]));
             for(let gName in globalGroups["Model"]) {
                 globalGroups["Model"][gName] = globalGroups["Model"][gName].filter(m => availableModels.has(m));
             }
 
             cleanData = rawData
-                // ADIM 1: GİZLEME (Ham veri adıyla kontrol et)
-                .filter(d => !hiddenItems.includes(d["Model"]))
+                // 1. Önce gizlileri temizle (TRIM yaparak eşleştir)
+                .filter(d => !hiddenItems.includes(d["Model"].trim()))
                 .map(d => {
                     let row = {...d};
-                    // ADIM 2: GRUPLAMA
+                    // 2. Sonra grupları uygula
                     for (let cat in globalGroups) {
                         if (globalGroups[cat]) {
                             for (let gName in globalGroups[cat]) {
-                                // Eğer bu satırın değeri grubun içindeyse, değerini grup adıyla değiştir
                                 if (globalGroups[cat][gName].includes(d[cat])) {
                                     row[cat] = gName; 
                                     break;
@@ -310,7 +306,6 @@
                             }
                         }
                     }
-                    // Tarih işleme
                     let p = parseDate(d["Tarih"]);
                     row["_Year"] = p.y; row["_Month"] = p.m; row["_MonthIdx"] = p.idx;
                     return row;
@@ -333,14 +328,13 @@
             updateDash();
         }
 
-        // --- FİLTRELER VE CHART (Aynı mantık, cleanData kullanıyor) ---
+        // --- FİLTRELER VE CHART ---
         function initFilters() {
             if(cleanData.length === 0) return;
             setupChecklist("list-danisman", [...new Set(cleanData.map(d => d["Danışman Adı"]))].sort(), "btn-danisman");
             setupChecklist("list-model", [...new Set(cleanData.map(d => d["Model"]))].sort(), "btn-model");
             setupDateFilter();
         }
-        // ... (Checklist ve DateFilter kodları öncekiyle aynı, cleanData kullandığı için sorunsuz) ...
         function setupChecklist(listId, items, btnId) {
             const container = document.getElementById(listId); container.innerHTML = "";
             const allLabel = document.createElement("label"); allLabel.className = "select-all-label"; allLabel.innerHTML = `<input type="checkbox" id="all-${listId}" checked> (Tümünü Seç)`; container.appendChild(allLabel);
@@ -399,9 +393,8 @@
         let simSelections = {};
         function openSimulation() {
             if(rawData.length===0) return;
-            // Simülasyona girmeden önce temizliği yap ki gruplar görünsün
             processData(); 
-            if(cleanData.length === 0) { alert("Veri yok!"); return; }
+            if(cleanData.length === 0) { alert("Veri yok veya hepsi gizlenmiş!"); return; }
             document.getElementById('home-page').style.display = 'none';
             document.getElementById('simulation-page').style.display = 'block';
             goToStep(1);
@@ -422,7 +415,6 @@
         }
         function renderSimGrid(id, col, cb) {
             const c = document.getElementById(id); c.innerHTML="";
-            // cleanData kullandığımız için artık Model kısmında GRUP İSİMLERİ gelecek.
             const items = [...new Set(cleanData.map(d=>d[col]))].sort();
             items.forEach(i => {
                 let d = document.createElement('div'); d.className='selection-card';
@@ -477,7 +469,7 @@
             items.forEach(i => {
                 if(!assigned.includes(i)) {
                     let d = document.createElement('div'); d.className='raw-item'; d.innerText=i;
-                    if(hiddenItems.includes(i)) d.classList.add('hidden-item');
+                    if(hiddenItems.includes(i.trim())) d.classList.add('hidden-item');
                     d.onclick=()=>{ d.classList.toggle('selected'); };
                     rd.appendChild(d);
                 }
@@ -521,7 +513,7 @@
         
         function toggleHideSelected() {
             document.querySelectorAll('.raw-item.selected').forEach(el => {
-                const val = el.innerText;
+                const val = el.innerText.trim();
                 if(hiddenItems.includes(val)) hiddenItems = hiddenItems.filter(x=>x!==val);
                 else hiddenItems.push(val);
             });
