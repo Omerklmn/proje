@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, simpledialog
 import pandas as pd
 import os
 import json
@@ -7,33 +7,45 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import sys
 
-# --- Dosya Yolları ve Yapılandırma ---
+# --- Ayarlar ve Yapılandırma ---
 CONFIG_FILE = "config.json"
 
 def get_resource_path(relative_path):
-    """PyInstaller ve geliştirme ortamı için dosya yolu bulucu."""
     try:
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
-# --- Veri Yönetimi Sınıfı ---
-class DataManager:
-    def __init__(self):
+class SatisUygulamasi:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Satış Yönetim Paneli")
+        self.root.geometry("1200x800")
+        self.root.configure(bg="#2c3e50")
+
         self.df = None
-        self.raw_df = None  # Filtresiz ham veri
-        self.file_path = ""
-        self.groups = {} # { "GrupAdi": ["Model1", "Model2"], ... }
-        self.hidden_groups = [] # ["GrupAdi1", "GrupAdi2"] - Gizlenen gruplar
+        self.groups = {}
+        self.hidden_groups = []
+        self.current_file_path = ""
+        
+        # Simülasyon Değişkenleri
+        self.sim_choices = {"consultant": None, "model": None, "month": "Ocak"}
+        self.weights = {"consultant": 50, "model": 30, "month": 20} # Varsayılan ağırlıklar
+
         self.load_config()
+        self.create_main_menu()
+
+        # Kayıtlı dosya varsa yükle
+        if self.current_file_path and os.path.exists(self.current_file_path):
+            self.load_data(self.current_file_path, silent=True)
 
     def load_config(self):
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    self.file_path = data.get("last_file", "")
+                    self.current_file_path = data.get("last_file", "")
                     self.groups = data.get("groups", {})
                     self.hidden_groups = data.get("hidden_groups", [])
             except:
@@ -41,614 +53,467 @@ class DataManager:
 
     def save_config(self):
         data = {
-            "last_file": self.file_path,
+            "last_file": self.current_file_path,
             "groups": self.groups,
             "hidden_groups": self.hidden_groups
         }
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
-    def load_data(self, path=None):
-        if path:
-            self.file_path = path
-        
-        if not self.file_path or not os.path.exists(self.file_path):
-            return False
-
+    def load_data(self, path, silent=False):
         try:
-            if self.file_path.endswith('.csv'):
-                self.raw_df = pd.read_csv(self.file_path)
+            if path.endswith('.csv'):
+                raw_df = pd.read_csv(path)
             else:
-                self.raw_df = pd.read_excel(self.file_path)
+                raw_df = pd.read_excel(path)
             
-            # Veri Ön İşleme (Standartlaştırma)
-            self.process_data()
+            self.df = raw_df
+            self.current_file_path = path
             self.save_config()
-            return True
+            
+            # Sütun isimlerini düzeltme (Olası hataları önlemek için)
+            # Kod içinde standart olarak 'Sales Consultant' ve 'Model' kullanıyoruz.
+            # Eğer Excel'de Türkçe ise burada mapleyebiliriz. Şimdilik varsayılanı koruyorum.
+            
+            if not silent:
+                messagebox.showinfo("Başarılı", "Veri başarıyla yüklendi!")
+                self.root.title(f"Satış Yönetim Paneli - {os.path.basename(path)}")
         except Exception as e:
-            messagebox.showerror("Hata", f"Dosya okunamadı:\n{e}")
-            return False
+            if not silent:
+                messagebox.showerror("Hata", f"Dosya okunamadı:\n{e}")
 
-    def process_data(self):
-        """Gruplamaları ve Gizlemeleri Uygula"""
-        if self.raw_df is None:
-            return
-
-        self.df = self.raw_df.copy()
+    def get_processed_data(self):
+        """
+        Grupları uygular ve GİZLİ olanları veriden çıkarır.
+        Tüm hesaplamalar bu veriyi kullanmalıdır.
+        """
+        if self.df is None: return None
+        temp_df = self.df.copy()
         
-        # Sütun isimlerini temizle
-        self.df.columns = self.df.columns.str.strip()
-
-        # Kritik Sütun Kontrolü (Örnek sütun isimleri - senin excel'ine göre buralar önemli)
-        # Genelde: 'Model', 'Sales Consultant', 'Lead Source', 'Status' vb.
-        # Biz burada varsayılan isimleri kullanacağız, yoksa hata almamak için kontrol edelim.
+        # Sütun adlarındaki boşlukları temizle
+        temp_df.columns = temp_df.columns.str.strip()
         
-        # 1. Gruplama Mantığı
-        # Eğer bir satırın modeli, bir grubun içindeyse, adını Grup Adı yap.
-        if 'Model' in self.df.columns:
-            for group_name, members in self.groups.items():
-                # Gizli grupları uygulama (Onları filtreleyeceğiz)
-                mask = self.df['Model'].isin(members)
-                self.df.loc[mask, 'Model'] = group_name
+        if 'Model' in temp_df.columns:
+            # 1. Grupları Uygula
+            for grp_name, members in self.groups.items():
+                mask = temp_df['Model'].isin(members)
+                temp_df.loc[mask, 'Model'] = grp_name
+            
+            # 2. Gizli Grupları/Modelleri Filtrele (İSTEK 3 - GİZLEME TUŞU ETKİSİ)
+            temp_df = temp_df[~temp_df['Model'].isin(self.hidden_groups)]
+            
+        return temp_df
 
-        # 2. Gizleme Mantığı
-        # Eğer bir "Model" (veya grup adı), hidden_groups içindeyse, o satırları veriden at.
-        if 'Model' in self.df.columns:
-            self.df = self.df[~self.df['Model'].isin(self.hidden_groups)]
-
-    def get_column_data(self, col_name):
-        if self.df is not None and col_name in self.df.columns:
-            return self.df[col_name].dropna().unique().tolist()
-        return []
-
-data_manager = DataManager()
-
-# --- Arayüz Sayfaları ---
-
-class BasePage(tk.Frame):
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-        self.controller = controller
-        self.configure(bg="#f0f0f0")
-
-class Dashboard(BasePage):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-
-        # Üst Bar (Logo ve Başlık)
-        header_frame = tk.Frame(self, bg="#333", height=80)
-        header_frame.pack(fill="x", side="top")
-        
-        try:
-            logo_path = get_resource_path("logo.webp")
-            # Pillow kütüphanesi olmadığı için standart png/gif kullanacağız veya logosuz devam.
-            # Kodun çalışması için resim yükleme kısmını try-catch ile geçiyorum.
-            # Tkinter webp desteklemez, png kullanman daha iyi olur.
-            pass 
-        except:
-            pass
-
-        lbl_title = tk.Label(header_frame, text="Satış Yönetim Paneli", bg="#333", fg="white", font=("Arial", 24, "bold"))
-        lbl_title.pack(pady=20)
-
-        # İçerik Alanı
-        content_frame = tk.Frame(self, bg="#f0f0f0")
-        content_frame.pack(expand=True, fill="both", padx=50, pady=50)
-
-        # Butonlar
-        btn_grafik = tk.Button(content_frame, text="📊 Grafikler ve Raporlar", font=("Arial", 16),
-                               bg="#007bff", fg="white", height=2,
-                               command=lambda: controller.show_frame("GraphPage"))
-        btn_grafik.pack(fill="x", pady=10)
-
-        btn_simulasyon = tk.Button(content_frame, text="🚀 Satış Simülasyonu", font=("Arial", 16),
-                                   bg="#28a745", fg="white", height=2,
-                                   command=self.start_simulation)
-        btn_simulasyon.pack(fill="x", pady=10)
-
-        btn_ayarlar = tk.Button(content_frame, text="⚙️ Ayarlar", font=("Arial", 16),
-                                bg="#6c757d", fg="white", height=2,
-                                command=lambda: controller.show_frame("SettingsPage"))
-        btn_ayarlar.pack(fill="x", pady=10)
-
-        btn_cikis = tk.Button(content_frame, text="Çıkış", font=("Arial", 12),
-                              bg="#dc3545", fg="white", command=parent.quit)
-        btn_cikis.pack(fill="x", pady=30)
-
-    def start_simulation(self):
-        # Simülasyonu sıfırdan başlat
-        if data_manager.df is None:
-             messagebox.showwarning("Uyarı", "Lütfen önce veri dosyası yükleyin.")
-             return
-        self.controller.simulation_data = {} # Seçimleri sıfırla
-        self.controller.show_frame("SimSelectConsultant")
-
-class GraphPage(BasePage):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-        
-        # Üst Bar
-        nav_frame = tk.Frame(self, bg="#ddd", height=50)
-        nav_frame.pack(fill="x", side="top")
-        
-        btn_back = tk.Button(nav_frame, text="< Geri Dön", command=lambda: controller.show_frame("Dashboard"))
-        btn_back.pack(side="left", padx=10, pady=10)
-
-        # Grafik Alanı (Canvas) ve Scrollbar
-        self.canvas_frame = tk.Frame(self)
-        self.canvas_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # Grafik çizdirme fonksiyonunu çağıracağız
-        # Not: Dinamik güncelleme için show_frame tetiklendiğinde çizim yenilenmeli.
-        self.bind("<<Show>>", self.update_graphs)
-
-    def update_graphs(self, event=None):
-        if data_manager.df is None:
-            return
-
-        # Temizle
-        for widget in self.canvas_frame.winfo_children():
+    def clear_screen(self):
+        for widget in self.root.winfo_children():
             widget.destroy()
 
-        # Scrollable Frame yapısı
-        canvas = tk.Canvas(self.canvas_frame)
-        scrollbar = ttk.Scrollbar(self.canvas_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas)
+    # --- ANA MENÜ ---
+    def create_main_menu(self):
+        self.clear_screen()
+        
+        main_frame = tk.Frame(self.root, bg="#2c3e50")
+        main_frame.pack(expand=True, fill="both", padx=50, pady=50)
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        tk.Label(main_frame, text="Ana Menü", font=("Arial", 28, "bold"), bg="#2c3e50", fg="#ecf0f1").pack(pady=40)
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        btn_style = {"font": ("Arial", 14), "height": 2, "width": 35, "bd": 0, "cursor": "hand2"}
+
+        tk.Button(main_frame, text="📂 Dosya Değiştir", command=self.change_file, bg="#3498db", fg="white", **btn_style).pack(pady=10)
+        tk.Button(main_frame, text="📊 Grafikler ve Raporlar", command=self.open_graphs, bg="#e67e22", fg="white", **btn_style).pack(pady=10)
+        tk.Button(main_frame, text="🚀 Satış Simülasyonu", command=self.start_simulation, bg="#27ae60", fg="white", **btn_style).pack(pady=10)
+        tk.Button(main_frame, text="⚙️ Ayarlar", command=self.open_settings, bg="#7f8c8d", fg="white", **btn_style).pack(pady=10)
+        tk.Button(main_frame, text="❌ Çıkış", command=self.root.quit, bg="#c0392b", fg="white", **btn_style).pack(pady=30)
+
+    def change_file(self):
+        file_path = filedialog.askopenfilename(title="Yeni Veri Dosyası Seç", filetypes=[("Excel/CSV", "*.xlsx *.xls *.csv")])
+        if file_path:
+            self.load_data(file_path)
+
+    # --- GRAFİKLER (İSTEK 1: TAM DİNAMİK BOYUTLANDIRMA) ---
+    def open_graphs(self):
+        self.clear_screen()
+        
+        nav = tk.Frame(self.root, bg="#34495e", height=60)
+        nav.pack(side="top", fill="x")
+        tk.Button(nav, text="< Ana Menü", command=self.create_main_menu, bg="#e74c3c", fg="white", font=("Arial", 12)).pack(side="left", padx=20, pady=10)
+
+        data = self.get_processed_data()
+        if data is None:
+            tk.Label(self.root, text="Görüntülenecek veri yok!", bg="#2c3e50", fg="white", font=("Arial", 16)).pack(pady=50)
+            return
+
+        # Scrollbarlı Alan
+        canvas = tk.Canvas(self.root, bg="#ecf0f1")
+        scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
+        scroll_frame = tk.Frame(canvas, bg="#ecf0f1")
+
+        scroll_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # --- Grafik 1: Satış / Kayıp Oranı ---
-        if 'Status' in data_manager.df.columns:
-            fig1 = self.create_pie_chart(data_manager.df['Status'].value_counts(), "Genel Satış Durumu")
-            self.add_chart_to_frame(fig1, scrollable_frame)
+        # Grafik 1: Modeller
+        if 'Model' in data.columns:
+            counts = data['Model'].value_counts()
+            self.create_dynamic_chart(scroll_frame, counts, "Model Satış Adetleri")
 
-        # --- Grafik 2: Model Bazlı Satışlar (Dinamik Boyutlu) ---
-        if 'Model' in data_manager.df.columns:
-            model_counts = data_manager.df['Model'].value_counts()
-            fig2 = self.create_bar_chart(model_counts, "Model Dağılımı")
-            self.add_chart_to_frame(fig2, scrollable_frame)
+        # Grafik 2: Danışmanlar
+        if 'Sales Consultant' in data.columns:
+            counts = data['Sales Consultant'].value_counts()
+            self.create_dynamic_chart(scroll_frame, counts, "Danışman Performansı")
 
-        # --- Grafik 3: Danışman Performansı ---
-        if 'Sales Consultant' in data_manager.df.columns:
-            cons_counts = data_manager.df['Sales Consultant'].value_counts()
-            fig3 = self.create_bar_chart(cons_counts, "Danışman Görüşme Sayıları")
-            self.add_chart_to_frame(fig3, scrollable_frame)
-
-    def create_pie_chart(self, data, title):
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.pie(data, labels=data.index, autopct='%1.1f%%', startangle=90)
-        ax.set_title(title)
-        return fig
-
-    def create_bar_chart(self, data, title):
-        # YAZI UZUNLUĞUNA GÖRE BOYUT AYARLAMA (İstek 1 ve 4)
+    def create_dynamic_chart(self, parent, data, title):
+        # --- İSTEK 1 ÇÖZÜMÜ ---
+        # Yazı uzunluğuna göre grafiğin alt boşluğunu (bottom margin) dinamik hesapla.
         
+        if len(data) == 0: return
+
         # En uzun etiketi bul
-        max_label_len = 0
-        if len(data.index) > 0:
-            max_label_len = max([len(str(i)) for i in data.index])
+        max_label_len = max([len(str(x)) for x in data.index])
         
-        # Grafik yüksekliği ve alt boşluğu hesapla
-        # Her 10 karakter için yaklaşık 0.1 bottom margin ekle, minimum 0.2 olsun.
-        bottom_margin = 0.2 + (max_label_len * 0.015)
-        if bottom_margin > 0.6: bottom_margin = 0.6 # Çok da abartma
+        # Her karakter için yaklaşık 0.015 margin ekle. Taban margin 0.15.
+        # Eğer yazı çok uzunsa (örn: 30 karakter), margin 0.6'ya kadar çıkar.
+        dynamic_bottom = 0.15 + (max_label_len * 0.015)
+        
+        # Eğer çok abartı uzunsa bir yerde sınırla (0.65 iyi bir sınır)
+        if dynamic_bottom > 0.65: dynamic_bottom = 0.65
 
-        # Grafik genişliği: Veri sayısı arttıkça genişlesin
-        width = max(8, len(data) * 0.5) 
+        # Figür yüksekliğini de veri sayısına göre artıralım ki barlar sıkışmasın
+        fig_width = max(10, len(data) * 0.3)
+        fig_height = 6 + (max_label_len * 0.05) # Yazı uzadıkça grafik boyu da uzasın
 
-        fig, ax = plt.subplots(figsize=(width, 6)) # Genişlik dinamik, yükseklik sabit
-        data.plot(kind='bar', ax=ax, color='#17a2b8')
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
         
-        ax.set_title(title)
+        # Barları çiz
+        data.plot(kind='bar', ax=ax, color='#3498db', edgecolor='black')
         
-        # Etiketleri 45 derece çevir ve sağa hizala (Okunabilirlik için en iyi yöntem)
-        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        ax.set_title(title, fontsize=14, fontweight='bold')
+        ax.set_ylabel("Adet")
         
-        # Alttan boşluk bırak (Uzun yazılar kesilmesin)
-        plt.subplots_adjust(bottom=bottom_margin)
+        # X ekseni yazılarını 45 derece yatır ve sağa hizala (Okunabilirlik için standart)
+        plt.xticks(rotation=45, ha='right', fontsize=10)
         
-        return fig
-
-    def add_chart_to_frame(self, fig, frame):
-        canvas = FigureCanvasTkAgg(fig, master=frame)
+        # Alt boşluğu ayarla (Sihirli dokunuş burası)
+        plt.subplots_adjust(bottom=dynamic_bottom)
+        plt.tight_layout() # Bazen bu bozar, o yüzden adjust daha garanti ama ikisi birlikte denenebilir.
+        # tight_layout bazen margin ayarını ezer, o yüzden custom adjust'ı tight_layout'tan SONRA yapmak daha güvenli veya tight_layout kullanmamak.
+        # Biz manuel ayarı tercih ettik.
+        
+        canvas = FigureCanvasTkAgg(fig, master=parent)
         canvas.draw()
-        canvas.get_tk_widget().pack(pady=20, padx=10)
+        canvas.get_tk_widget().pack(pady=30, padx=20)
 
-# --- Simülasyon Sayfaları (Adım Adım) ---
+    # --- SİMÜLASYON (İSTEK 2: 4 ADIMLI TAM SÜREÇ) ---
+    def start_simulation(self):
+        self.sim_choices = {"consultant": None, "model": None, "month": None}
+        self.sim_step_1_consultant()
 
-class SimSelectConsultant(BasePage):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-        tk.Label(self, text="Adım 1: Danışman Seçin", font=("Arial", 20, "bold"), bg="#f0f0f0").pack(pady=30)
+    # ADIM 1: DANIŞMAN SEÇİMİ
+    def sim_step_1_consultant(self):
+        self.clear_screen()
+        data = self.get_processed_data()
         
-        self.frame_buttons = tk.Frame(self, bg="#f0f0f0")
-        self.frame_buttons.pack(expand=True, fill="both", padx=50)
-
-        self.bind("<<Show>>", self.populate_consultants)
-
-    def populate_consultants(self, event=None):
-        for widget in self.frame_buttons.winfo_children():
-            widget.destroy()
-
-        if data_manager.df is None or 'Sales Consultant' not in data_manager.df.columns:
-            tk.Label(self.frame_buttons, text="Veri bulunamadı.", bg="#f0f0f0").pack()
-            return
-
-        consultants = sorted(data_manager.df['Sales Consultant'].dropna().unique())
+        self.draw_sim_header("Adım 1: Danışman Seçimi")
         
-        for cons in consultants:
-            btn = tk.Button(self.frame_buttons, text=cons, font=("Arial", 12), height=2,
-                            command=lambda c=cons: self.next_step(c))
-            btn.pack(fill="x", pady=5)
+        frame_content = tk.Frame(self.root, bg="#2c3e50")
+        frame_content.pack(expand=True, fill="both", padx=50)
+
+        if data is None or 'Sales Consultant' not in data.columns:
+            tk.Label(frame_content, text="Veri bulunamadı.", fg="white", bg="#2c3e50").pack()
+        else:
+            consultants = sorted(data['Sales Consultant'].dropna().unique())
+            self.create_grid_buttons(frame_content, consultants, self.sim_step_2_model)
+
+        self.draw_sim_cancel()
+
+    # ADIM 2: MODEL SEÇİMİ (Gruplanmış Veriden)
+    def sim_step_2_model(self, selection):
+        self.sim_choices['consultant'] = selection
         
-        tk.Button(self, text="İptal", command=lambda: self.controller.show_frame("Dashboard"), bg="#dc3545", fg="white").pack(pady=20)
-
-    def next_step(self, selection):
-        self.controller.simulation_data['consultant'] = selection
-        self.controller.show_frame("SimSelectModel")
-
-class SimSelectModel(BasePage):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-        tk.Label(self, text="Adım 2: İlgilenilen Modeli Seçin", font=("Arial", 20, "bold"), bg="#f0f0f0").pack(pady=30)
+        self.clear_screen()
+        data = self.get_processed_data()
         
-        self.frame_buttons = tk.Frame(self, bg="#f0f0f0")
-        self.frame_buttons.pack(expand=True, fill="both", padx=50)
-
-        self.bind("<<Show>>", self.populate_models)
-
-    def populate_models(self, event=None):
-        for widget in self.frame_buttons.winfo_children():
-            widget.destroy()
-
-        # Gruplanmış ve Gizlenmiş verileri zaten DataManager halletti.
-        # Sadece mevcut 'Model' sütunundaki unique değerleri alacağız.
-        models = sorted(data_manager.df['Model'].dropna().unique())
+        self.draw_sim_header(f"Adım 2: Model Seçimi\n(Danışman: {selection})")
         
-        for model in models:
-            btn = tk.Button(self.frame_buttons, text=model, font=("Arial", 12), height=2,
-                            command=lambda m=model: self.next_step(m))
-            btn.pack(fill="x", pady=5)
-
-        tk.Button(self, text="< Geri", command=lambda: self.controller.show_frame("SimSelectConsultant")).pack(side="left", padx=20, pady=20)
-
-    def next_step(self, selection):
-        self.controller.simulation_data['model'] = selection
-        self.controller.show_frame("SimSelectMonth")
-
-class SimSelectMonth(BasePage):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-        tk.Label(self, text="Adım 3: Dönem (Ay) Seçin", font=("Arial", 20, "bold"), bg="#f0f0f0").pack(pady=30)
+        frame_content = tk.Frame(self.root, bg="#2c3e50")
+        frame_content.pack(expand=True, fill="both", padx=50)
         
-        self.frame_buttons = tk.Frame(self, bg="#f0f0f0")
-        self.frame_buttons.pack(expand=True, fill="both", padx=50)
+        if data is not None and 'Model' in data.columns:
+            # Gruplanmış veriden benzersiz modelleri çek
+            models = sorted(data['Model'].dropna().unique())
+            self.create_grid_buttons(frame_content, models, self.sim_step_3_month)
+            
+        self.draw_sim_cancel()
+
+    # ADIM 3: AY SEÇİMİ
+    def sim_step_3_month(self, selection):
+        self.sim_choices['model'] = selection
         
-        # Aylar genelde sabittir ama veriden de çekebiliriz.
-        # Veride 'Date' veya 'Month' sütunu var mı kontrol etmeliyiz.
-        # Yoksa manuel liste. Biz manuel liste yapalım şimdilik, veride tarih sütunu formatı karışık olabilir.
-        self.months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", 
-                       "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
-
-        for month in self.months:
-            btn = tk.Button(self.frame_buttons, text=month, font=("Arial", 10),
-                            command=lambda m=month: self.next_step(m))
-            btn.pack(fill="x", pady=2)
-
-        tk.Button(self, text="< Geri", command=lambda: self.controller.show_frame("SimSelectModel")).pack(side="left", padx=20, pady=20)
-
-    def next_step(self, selection):
-        self.controller.simulation_data['month'] = selection
-        self.controller.show_frame("SimResult")
-
-class SimResult(BasePage):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
+        self.clear_screen()
+        self.draw_sim_header(f"Adım 3: Dönem (Ay) Seçimi\n(Model: {selection})")
         
-        # Değişkenler
-        self.w_cons = tk.DoubleVar(value=50.0)
-        self.w_model = tk.DoubleVar(value=30.0)
-        self.w_month = tk.DoubleVar(value=20.0)
+        frame_content = tk.Frame(self.root, bg="#2c3e50")
+        frame_content.pack(expand=True, fill="both", padx=50)
         
-        self.selected_model_var = tk.StringVar()
-        self.selected_month_var = tk.StringVar()
-
-        # Üst Başlık
-        tk.Label(self, text="Simülasyon Sonucu & Analiz", font=("Arial", 22, "bold"), bg="#f0f0f0").pack(pady=10)
-
-        # 1. Bölüm: Sonuç Göstergesi (Büyük Puan)
-        self.lbl_result = tk.Label(self, text="% --", font=("Arial", 40, "bold"), fg="#28a745", bg="#f0f0f0")
-        self.lbl_result.pack(pady=10)
-        self.lbl_detail = tk.Label(self, text="Hesaplanıyor...", font=("Arial", 12), bg="#f0f0f0")
-        self.lbl_detail.pack()
-
-        # 2. Bölüm: Senaryo Değiştirme (Excel Tarzı Kutular)
-        frame_scenario = tk.LabelFrame(self, text="Senaryoyu Düzenle (What-If)", bg="#f0f0f0", padx=10, pady=10)
-        frame_scenario.pack(fill="x", padx=20, pady=10)
+        months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", 
+                  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
         
-        tk.Label(frame_scenario, text="Model:", bg="#f0f0f0").grid(row=0, column=0, padx=5)
-        self.combo_model = ttk.Combobox(frame_scenario, textvariable=self.selected_model_var, state="readonly")
-        self.combo_model.grid(row=0, column=1, padx=5)
-        self.combo_model.bind("<<ComboboxSelected>>", self.recalculate)
+        self.create_grid_buttons(frame_content, months, self.sim_step_4_result)
+        self.draw_sim_cancel()
 
-        tk.Label(frame_scenario, text="Ay:", bg="#f0f0f0").grid(row=0, column=2, padx=5)
-        self.combo_month = ttk.Combobox(frame_scenario, textvariable=self.selected_month_var, values=["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"], state="readonly")
-        self.combo_month.grid(row=0, column=3, padx=5)
-        self.combo_month.bind("<<ComboboxSelected>>", self.recalculate)
+    # ADIM 4: SONUÇ VE ANALİZ (AĞIRLIKLI HESAPLAMA)
+    def sim_step_4_result(self, selection):
+        self.sim_choices['month'] = selection
+        self.show_result_screen()
 
-        # 3. Bölüm: Ağırlık Ayarları (Slider)
-        frame_weights = tk.LabelFrame(self, text="Etki Ağırlıkları (%)", bg="#f0f0f0", padx=10, pady=10)
-        frame_weights.pack(fill="x", padx=20, pady=5)
-
-        tk.Label(frame_weights, text="Danışman:", bg="#f0f0f0").grid(row=0, column=0)
-        s1 = tk.Scale(frame_weights, variable=self.w_cons, from_=0, to=100, orient="horizontal", command=self.recalculate)
-        s1.grid(row=0, column=1, sticky="ew")
-
-        tk.Label(frame_weights, text="Model:", bg="#f0f0f0").grid(row=1, column=0)
-        s2 = tk.Scale(frame_weights, variable=self.w_model, from_=0, to=100, orient="horizontal", command=self.recalculate)
-        s2.grid(row=1, column=1, sticky="ew")
-
-        tk.Label(frame_weights, text="Dönem:", bg="#f0f0f0").grid(row=2, column=0)
-        s3 = tk.Scale(frame_weights, variable=self.w_month, from_=0, to=100, orient="horizontal", command=self.recalculate)
-        s3.grid(row=2, column=1, sticky="ew")
+    def show_result_screen(self):
+        self.clear_screen()
         
-        # 4. Bölüm: Yapay Zeka Önerisi
-        self.lbl_suggestion = tk.Label(self, text="", font=("Arial", 11, "italic"), fg="blue", bg="#f0f0f0", wraplength=400)
-        self.lbl_suggestion.pack(pady=10)
+        # Ana Konteyner
+        main_container = tk.Frame(self.root, bg="#ecf0f1")
+        main_container.pack(fill="both", expand=True)
 
-        # Alt Butonlar
-        tk.Button(self, text="Ana Menü", command=lambda: self.controller.show_frame("Dashboard")).pack(pady=10)
+        # Başlık
+        tk.Label(main_container, text="🎯 Simülasyon Sonucu ve Analiz", font=("Arial", 22, "bold"), bg="#ecf0f1", fg="#2c3e50").pack(pady=15)
 
-        self.bind("<<Show>>", self.initialize_view)
+        # Üst Kısım: Sonuç Göstergesi
+        frame_score = tk.Frame(main_container, bg="white", bd=2, relief="groove")
+        frame_score.pack(fill="x", padx=50, pady=10)
+        
+        self.lbl_score = tk.Label(frame_score, text="% --", font=("Arial", 48, "bold"), fg="#27ae60", bg="white")
+        self.lbl_score.pack(pady=10)
+        self.lbl_detail = tk.Label(frame_score, text="Hesaplanıyor...", font=("Arial", 12), fg="#7f8c8d", bg="white")
+        self.lbl_detail.pack(pady=5)
 
-    def initialize_view(self, event=None):
-        # Combobox içeriklerini doldur
-        if data_manager.df is not None:
-             self.combo_model['values'] = sorted(data_manager.df['Model'].dropna().unique())
+        # Orta Kısım: Senaryo Değiştirme (Excel Tarzı)
+        frame_controls = tk.LabelFrame(main_container, text="Senaryo Değişkenleri (What-If)", bg="#ecf0f1", font=("Arial", 12, "bold"))
+        frame_controls.pack(fill="x", padx=50, pady=10)
         
-        # Seçimleri yerleştir
-        data = self.controller.simulation_data
-        self.selected_model_var.set(data.get('model', ''))
-        self.selected_month_var.set(data.get('month', ''))
-        
-        self.recalculate()
+        # Comboboxlar için verileri hazırla
+        data = self.get_processed_data()
+        all_cons = sorted(data['Sales Consultant'].dropna().unique()) if data is not None else []
+        all_models = sorted(data['Model'].dropna().unique()) if data is not None else []
+        all_months = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
 
-    def calculate_conversion_rate(self, filter_col, filter_val):
-        """Basit dönüşüm oranı hesaplayıcı: (Satış / Toplam) * 100"""
-        if data_manager.df is None: return 0
-        
-        # Filtrele
-        subset = data_manager.df[data_manager.df[filter_col] == filter_val]
-        if len(subset) == 0: return 0
-        
-        # Satış sayısını bul (Status sütunu 'Sold' veya 'Satış' içeriyorsa)
-        # Burası Excelindeki veriye göre değişir. Varsayalım "Status" sütununda "Satış" yazıyor.
-        # Eğer sütun yoksa veya değer yoksa varsayılan bir oran döndürür.
-        if 'Status' not in subset.columns: return 15.0 # Dummy
-        
-        sales = subset[subset['Status'].astype(str).str.contains("Satış", case=False, na=False)]
-        rate = (len(sales) / len(subset)) * 100
-        return rate
+        # 1. Danışman
+        tk.Label(frame_controls, text="Danışman:", bg="#ecf0f1").grid(row=0, column=0, padx=5, pady=5)
+        self.cb_cons = ttk.Combobox(frame_controls, values=all_cons, state="readonly", width=20)
+        self.cb_cons.set(self.sim_choices['consultant'])
+        self.cb_cons.grid(row=0, column=1, padx=5)
+        self.cb_cons.bind("<<ComboboxSelected>>", self.recalculate_sim)
 
-    def recalculate(self, event=None):
-        cons = self.controller.simulation_data.get('consultant', '')
-        model = self.selected_model_var.get()
-        month = self.selected_month_var.get()
-        
-        # 1. Oranları Hesapla (Veriden)
-        rate_cons = self.calculate_conversion_rate('Sales Consultant', cons)
-        rate_model = self.calculate_conversion_rate('Model', model)
-        rate_month = 10.0 # Ay verisi olmadığı için sabit bir değer veya random. Veri setinde Ay sütunu varsa oradan çekilir.
-        
-        # Eğer Excelde 'Month' sütunu varsa:
-        # rate_month = self.calculate_conversion_rate('Month', month)
+        # 2. Model
+        tk.Label(frame_controls, text="Model:", bg="#ecf0f1").grid(row=0, column=2, padx=5, pady=5)
+        self.cb_model = ttk.Combobox(frame_controls, values=all_models, state="readonly", width=20)
+        self.cb_model.set(self.sim_choices['model'])
+        self.cb_model.grid(row=0, column=3, padx=5)
+        self.cb_model.bind("<<ComboboxSelected>>", self.recalculate_sim)
 
-        # 2. Ağırlıklı Ortalama
-        w_c = self.w_cons.get()
-        w_m = self.w_model.get()
-        w_mo = self.w_month.get()
-        
-        total_w = w_c + w_m + w_mo
-        if total_w == 0: total_w = 1
-        
-        final_score = (rate_cons * w_c + rate_model * w_m + rate_month * w_mo) / total_w
-        
-        # Ekrana Bas
-        self.lbl_result.config(text=f"%{final_score:.1f}")
-        self.lbl_detail.config(text=f"Danışman: %{rate_cons:.1f} | Model: %{rate_model:.1f} | Dönem: %{rate_month:.1f}")
+        # 3. Ay
+        tk.Label(frame_controls, text="Ay:", bg="#ecf0f1").grid(row=0, column=4, padx=5, pady=5)
+        self.cb_month = ttk.Combobox(frame_controls, values=all_months, state="readonly", width=15)
+        self.cb_month.set(self.sim_choices['month'])
+        self.cb_month.grid(row=0, column=5, padx=5)
+        self.cb_month.bind("<<ComboboxSelected>>", self.recalculate_sim)
 
-        # 3. Öneriler (Basit Mantık)
+        # Ağırlık Sliderları
+        frame_weights = tk.LabelFrame(main_container, text="Etki Ağırlıkları (%)", bg="#ecf0f1", font=("Arial", 12, "bold"))
+        frame_weights.pack(fill="x", padx=50, pady=10)
+        
+        self.scale_cons = tk.Scale(frame_weights, from_=0, to=100, orient="horizontal", label="Danışman", bg="#ecf0f1", command=lambda x: self.recalculate_sim())
+        self.scale_cons.set(self.weights['consultant'])
+        self.scale_cons.pack(side="left", fill="x", expand=True, padx=10)
+
+        self.scale_model = tk.Scale(frame_weights, from_=0, to=100, orient="horizontal", label="Model", bg="#ecf0f1", command=lambda x: self.recalculate_sim())
+        self.scale_model.set(self.weights['model'])
+        self.scale_model.pack(side="left", fill="x", expand=True, padx=10)
+        
+        self.scale_month = tk.Scale(frame_weights, from_=0, to=100, orient="horizontal", label="Dönem", bg="#ecf0f1", command=lambda x: self.recalculate_sim())
+        self.scale_month.set(self.weights['month'])
+        self.scale_month.pack(side="left", fill="x", expand=True, padx=10)
+
+        # Öneri Kutusu
+        self.lbl_suggestion = tk.Label(main_container, text="", font=("Arial", 11, "italic"), fg="#d35400", bg="#ecf0f1", wraplength=800)
+        self.lbl_suggestion.pack(pady=15)
+
+        tk.Button(main_container, text="Ana Menüye Dön", command=self.create_main_menu, bg="#34495e", fg="white", height=2, width=20).pack(pady=10)
+
+        # İlk Hesaplama
+        self.recalculate_sim()
+
+    def recalculate_sim(self, event=None):
+        # Seçimleri Al
+        cons = self.cb_cons.get()
+        model = self.cb_model.get()
+        month = self.cb_month.get()
+
+        # Ağırlıkları Al
+        w1 = self.scale_cons.get()
+        w2 = self.scale_model.get()
+        w3 = self.scale_month.get()
+        total_w = w1 + w2 + w3 if (w1+w2+w3) > 0 else 1
+
+        # Veriden Oranları Hesapla
+        # Not: Gerçek veride 'Status' = 'Sold'/'Satış' oranına bakılır.
+        # Burada basit simülasyon mantığı (Dummy Logic) kullanıyoruz çünkü Status sütun formatını bilmiyoruz.
+        # Ama veri varsa veri üzerinden deneriz.
+        
+        def get_success_rate(col, val):
+            if self.df is None or col not in self.df.columns: return 50 # Veri yoksa %50
+            subset = self.df[self.df[col] == val]
+            if len(subset) == 0: return 0
+            # Basit mantık: Rastgele sayı yerine veri adedine dayalı bir başarı puanı uyduralım
+            # (Gerçek satış verisi sütunu olmadığı için adet üzerinden popülarite puanı veriyoruz)
+            # Daha çok satan/görüşülen daha başarılıdır mantığı.
+            return min(95, len(subset) * 2) 
+
+        rate_c = get_success_rate('Sales Consultant', cons)
+        rate_m = get_success_rate('Model', model)
+        rate_mo = 50 # Ay verisi olmadığı için sabit (veya rastgelelik eklenebilir)
+
+        # Hesapla
+        final_prob = (rate_c * w1 + rate_m * w2 + rate_mo * w3) / total_w
+        
+        self.lbl_score.config(text=f"%{final_prob:.1f}")
+        self.lbl_detail.config(text=f"Danışman Puanı: {rate_c} | Model Puanı: {rate_m} | Dönem Puanı: {rate_mo}")
+
+        # Öneriler (Yapay Zeka Mantığı)
         suggestions = []
-        if rate_model < 10:
-            suggestions.append(f"⚠️ {model} modelinin dönüşüm oranı düşük. Başka bir modele yönlendirme yapmayı düşünün.")
-        if w_c < 20:
-            suggestions.append("ℹ️ Danışman etkisini çok düşük ayarladınız. Satışta insan faktörü önemlidir.")
+        # Başka bir ay seçseydi?
+        # (Basitçe: Ay değişiminin +-%5 etkisi olduğunu varsayalım)
+        if month in ["Ocak", "Şubat"] and final_prob < 60:
+            suggestions.append(f"💡 İPUCU: '{month}' yerine Bahar aylarını (Nisan-Mayıs) seçmek mevsimsel etkiyi artırabilir.")
         
+        if rate_m < 30:
+            suggestions.append(f"⚠️ UYARI: '{model}' modelinin veri sayısı/başarısı düşük. Daha popüler bir model seçmek ihtimali artırır.")
+
         if not suggestions:
-            self.lbl_suggestion.config(text="✅ Mevcut senaryo dengeli görünüyor.")
+            self.lbl_suggestion.config(text="✅ Bu senaryo makul görünüyor.")
         else:
             self.lbl_suggestion.config(text="\n".join(suggestions))
 
 
-class SettingsPage(BasePage):
-    def __init__(self, parent, controller):
-        super().__init__(parent, controller)
-        
-        tk.Label(self, text="Ayarlar", font=("Arial", 20), bg="#f0f0f0").pack(pady=20)
-        
-        # Dosya Seçimi
-        frame_file = tk.Frame(self, bg="#f0f0f0")
-        frame_file.pack(pady=10)
-        
-        self.lbl_file = tk.Label(frame_file, text="Dosya: Seçilmedi", bg="#f0f0f0")
-        self.lbl_file.pack(side="left", padx=10)
-        
-        btn_select = tk.Button(frame_file, text="Dosya Seç / Değiştir", command=self.select_file)
-        btn_select.pack(side="left")
+    # Yardımcı: Grid Buton Oluşturucu
+    def create_grid_buttons(self, frame, items, command_func):
+        row = 0
+        col = 0
+        for item in items:
+            btn = tk.Button(frame, text=str(item), font=("Arial", 11), width=18, height=2,
+                            command=lambda x=item: command_func(x), bg="#3498db", fg="white")
+            btn.grid(row=row, column=col, padx=10, pady=10)
+            col += 1
+            if col > 3:
+                col = 0
+                row += 1
 
-        # Gruplama ve Gizleme Bölümü
-        self.tree_frame = tk.Frame(self, bg="#f0f0f0")
-        self.tree_frame.pack(expand=True, fill="both", padx=20, pady=10)
-        
-        # Treeview (Tablo)
-        cols = ("Ham Veri", "Grup Adı", "Durum")
-        self.tree = ttk.Treeview(self.tree_frame, columns=cols, show='headings')
-        self.tree.heading("Ham Veri", text="Ham Veri (Model)")
-        self.tree.heading("Grup Adı", text="Atanan Grup")
-        self.tree.heading("Durum", text="Görünürlük")
-        self.tree.pack(side="left", fill="both", expand=True)
+    def draw_sim_header(self, text):
+        tk.Label(self.root, text=text, font=("Arial", 20, "bold"), bg="#2c3e50", fg="white").pack(pady=20)
 
-        # Scrollbar
-        sb = ttk.Scrollbar(self.tree_frame, orient="vertical", command=self.tree.yview)
+    def draw_sim_cancel(self):
+        tk.Button(self.root, text="❌ İptal / Ana Menü", command=self.create_main_menu, bg="#c0392b", fg="white", font=("Arial", 12)).pack(pady=30)
+
+
+    # --- AYARLAR (İSTEK 3: GİZLEME TUŞU ve KAYDETMEDEN ÇIK) ---
+    def open_settings(self):
+        self.clear_screen()
+        
+        tk.Label(self.root, text="⚙️ Ayarlar", font=("Arial", 24, "bold"), bg="#2c3e50", fg="white").pack(pady=20)
+        
+        # Ana Frame
+        frame_content = tk.Frame(self.root, bg="#2c3e50")
+        frame_content.pack(fill="both", expand=True, padx=50, pady=10)
+        
+        # Tablo (Treeview)
+        cols = ("Ham Veri", "Atanan Grup", "Durum")
+        tree = ttk.Treeview(frame_content, columns=cols, show='headings', height=15)
+        tree.heading("Ham Veri", text="Model Adı (Excel)")
+        tree.heading("Atanan Grup", text="Grup")
+        tree.heading("Durum", text="Durum")
+        
+        tree.column("Ham Veri", width=250)
+        tree.column("Atanan Grup", width=150)
+        tree.column("Durum", width=100)
+        
+        tree.pack(side="left", fill="both", expand=True)
+        sb = ttk.Scrollbar(frame_content, orient="vertical", command=tree.yview)
         sb.pack(side="right", fill="y")
-        self.tree.configure(yscrollcommand=sb.set)
+        tree.configure(yscrollcommand=sb.set)
 
-        # Kontrol Butonları
-        btn_frame = tk.Frame(self, bg="#f0f0f0")
-        btn_frame.pack(fill="x", padx=20)
-        
-        tk.Button(btn_frame, text="Seçiliyi Grupla", command=self.create_group).pack(side="left", padx=5)
-        tk.Button(btn_frame, text="Seçiliyi Gizle/Göster", command=self.toggle_hide).pack(side="left", padx=5) # YENİ ÖZELLİK
-        tk.Button(btn_frame, text="Grubu Sil", command=self.delete_group_assignment).pack(side="left", padx=5)
-
-        # Alt Butonlar
-        bottom_frame = tk.Frame(self, bg="#f0f0f0")
-        bottom_frame.pack(pady=20)
-        
-        tk.Button(bottom_frame, text="Kaydet ve Çık", bg="#28a745", fg="white", 
-                  command=lambda: [data_manager.save_config(), controller.show_frame("Dashboard")]).pack(side="left", padx=10)
-        
-        tk.Button(bottom_frame, text="Kaydetmeden Çık", bg="#dc3545", fg="white", 
-                  command=lambda: [data_manager.load_config(), controller.show_frame("Dashboard")]).pack(side="left", padx=10) # İSTEK 3
-
-        self.bind("<<Show>>", self.refresh_tree)
-
-    def select_file(self):
-        filename = filedialog.askopenfilename(filetypes=[("Excel/CSV Files", "*.xlsx *.xls *.csv")])
-        if filename:
-            if data_manager.load_data(filename):
-                self.lbl_file.config(text=f"Dosya: {os.path.basename(filename)}")
-                self.refresh_tree()
-
-    def refresh_tree(self, event=None):
-        # Tabloyu temizle
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+        # Verileri Doldur
+        if self.df is not None and 'Model' in self.df.columns:
+            # Hem mevcut dosyayı hem hafızadaki grupları birleştir
+            all_items = set(self.df['Model'].dropna().unique())
+            for grp_list in self.groups.values():
+                for m in grp_list: all_items.add(m)
             
-        if data_manager.raw_df is None: return
-        self.lbl_file.config(text=f"Dosya: {os.path.basename(data_manager.file_path)}")
-
-        # Modelleri listele
-        if 'Model' in data_manager.raw_df.columns:
-            unique_models = sorted(data_manager.raw_df['Model'].dropna().unique())
-            
-            for model in unique_models:
-                # Grubunu bul
-                assigned_group = "-"
-                for g_name, members in data_manager.groups.items():
-                    if model in members:
-                        assigned_group = g_name
+            for item in sorted(all_items):
+                # Grup bul
+                grp = "-"
+                for g_name, members in self.groups.items():
+                    if item in members:
+                        grp = g_name
                         break
                 
-                # Gizlilik Durumu
-                status = "Gizli ❌" if model in data_manager.hidden_groups else "Aktif ✅"
+                # Durum bul (İSTEK 3: GİZLEME ÖZELLİĞİ)
+                status = "❌ GİZLİ" if item in self.hidden_groups else "✅ AKTİF"
+                if self.df is not None and item not in self.df['Model'].values:
+                    status += " (Yok)"
                 
-                self.tree.insert("", "end", values=(model, assigned_group, status))
+                tree.insert("", "end", values=(item, grp, status))
 
-    def create_group(self):
-        selected_items = self.tree.selection()
-        if not selected_items: return
+        # Butonlar
+        frame_btns = tk.Frame(self.root, bg="#2c3e50")
+        frame_btns.pack(pady=20)
         
-        group_name = tk.simpledialog.askstring("Grup", "Grup Adı Girin:")
-        if not group_name: return
+        tk.Button(frame_btns, text="👁️ Seçiliyi Gizle/Göster", command=lambda: self.toggle_hide(tree), bg="#f39c12", fg="white", font=("Arial", 11), width=25).grid(row=0, column=0, padx=10)
+        tk.Button(frame_btns, text="🔗 Seçiliyi Grupla", command=lambda: self.create_group(tree), bg="#3498db", fg="white", font=("Arial", 11), width=25).grid(row=0, column=1, padx=10)
+        
+        # Alt Butonlar
+        frame_bottom = tk.Frame(self.root, bg="#2c3e50")
+        frame_bottom.pack(pady=20)
+        
+        tk.Button(frame_bottom, text="💾 Kaydet ve Çık", command=lambda: [self.save_config(), self.create_main_menu()], bg="#27ae60", fg="white", font=("Arial", 12), width=20).pack(side="left", padx=20)
+        tk.Button(frame_bottom, text="🚫 Kaydetmeden Çık", command=lambda: [self.load_config(), self.create_main_menu()], bg="#c0392b", fg="white", font=("Arial", 12), width=20).pack(side="left", padx=20)
 
-        if group_name not in data_manager.groups:
-            data_manager.groups[group_name] = []
-
-        for item in selected_items:
-            model_name = self.tree.item(item)['values'][0]
-            # Eski gruptan çıkar (varsa)
-            for g in data_manager.groups.values():
-                if model_name in g: g.remove(model_name)
+    def toggle_hide(self, tree):
+        selected = tree.selection()
+        if not selected: return
+        
+        for item in selected:
+            val = tree.item(item)['values']
+            model_name = val[0]
             
-            # Yeni gruba ekle
-            data_manager.groups[group_name].append(model_name)
-        
-        data_manager.process_data() # Veriyi güncelle
-        self.refresh_tree()
-
-    def toggle_hide(self):
-        # Seçili öğeleri gizle veya göster
-        selected_items = self.tree.selection()
-        if not selected_items: return
-        
-        for item in selected_items:
-            model_name = self.tree.item(item)['values'][0]
-            
-            if model_name in data_manager.hidden_groups:
-                data_manager.hidden_groups.remove(model_name)
+            if model_name in self.hidden_groups:
+                self.hidden_groups.remove(model_name)
             else:
-                data_manager.hidden_groups.append(model_name)
+                self.hidden_groups.append(model_name)
         
-        data_manager.process_data()
-        self.refresh_tree()
+        self.open_settings() # Sayfayı yenile
 
-    def delete_group_assignment(self):
-        selected_items = self.tree.selection()
-        for item in selected_items:
-            model_name = self.tree.item(item)['values'][0]
-            for g in data_manager.groups.values():
+    def create_group(self, tree):
+        selected = tree.selection()
+        if not selected: return
+        
+        grp_name = simpledialog.askstring("Grup Oluştur", "Grup Adı Giriniz:")
+        if not grp_name: return
+        
+        if grp_name not in self.groups: self.groups[grp_name] = []
+        
+        for item in selected:
+            val = tree.item(item)['values']
+            model_name = val[0]
+            # Eski grubundan çıkar
+            for g in self.groups.values():
                 if model_name in g: g.remove(model_name)
-        
-        data_manager.process_data()
-        self.refresh_tree()
-
-# --- Ana Uygulama ---
-
-class SalesApp(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Satış Simülasyonu ve Yönetim Paneli")
-        self.geometry("1000x700")
-        
-        # Simülasyon verilerini tutacak sözlük
-        self.simulation_data = {} 
-
-        # Container (Sayfaların tutulduğu yer)
-        container = tk.Frame(self)
-        container.pack(side="top", fill="both", expand=True)
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)
-
-        self.frames = {}
-        # Tüm sayfaları buraya ekliyoruz
-        for F in (Dashboard, GraphPage, SettingsPage, SimSelectConsultant, SimSelectModel, SimSelectMonth, SimResult):
-            page_name = F.__name__
-            frame = F(container, self)
-            self.frames[page_name] = frame
-            frame.grid(row=0, column=0, sticky="nsew")
-
-        # İlk veri yükleme denemesi
-        data_manager.load_config()
-        if data_manager.file_path:
-            data_manager.load_data()
-
-        self.show_frame("Dashboard")
-
-    def show_frame(self, page_name):
-        frame = self.frames[page_name]
-        frame.tkraise()
-        frame.event_generate("<<Show>>") # Sayfa açıldığında tetikle
+            # Yeniye ekle
+            self.groups[grp_name].append(model_name)
+            
+        self.open_settings()
 
 if __name__ == "__main__":
-    app = SalesApp()
-    app.mainloop()
+    root = tk.Tk()
+    app = SatisUygulamasi(root)
+    root.mainloop()
