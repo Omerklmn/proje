@@ -11,6 +11,7 @@ from tkinter import filedialog, messagebox
 # --- YARDIMCI FONKSİYONLAR ---
 
 def resource_path(relative_path):
+    """ Exe çalışırken ve normal çalışırken dosya yolunu bulur """
     try:
         base_path = sys._MEIPASS
     except Exception:
@@ -18,6 +19,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 def get_image_data(filename):
+    """ Resim dosyasını Base64 formatına çevirir """
     full_path = resource_path(filename)
     if not os.path.exists(full_path):
         full_path = filename 
@@ -30,7 +32,7 @@ def get_image_data(filename):
             pass
     return "https://via.placeholder.com/300x200?text=Gorsel+Yok"
 
-# --- DOSYA SEÇİM MEKANİZMASI (GÜNCELLENDİ: İSTEK 1) ---
+# --- İSTEK 1: DOSYA HAFIZASI ---
 CONFIG_FILE = "ayarlar.json"
 
 def load_config():
@@ -56,29 +58,32 @@ def get_excel_file():
     config = load_config()
     last_file = config.get("last_file")
 
-    # İSTEK 1: Son dosya varsa sor
+    # Eğer son dosya varsa sor
     if last_file and os.path.exists(last_file):
         msg = f"Son kullanılan dosya bulundu:\n{last_file}\n\nBu dosya ile devam etmek ister misiniz?\n('Hayır' derseniz yeni dosya seçebilirsiniz)"
         response = messagebox.askyesno("Dosya Seçimi", msg)
         if response:
             return last_file
     
-    # Kayıtlı dosya yoksa veya kullanıcı değiştirmek isterse
+    # Yoksa veya Hayır dendiyse yeni seçtir
     messagebox.showinfo("Dosya Seçimi", "Lütfen analiz edilecek Excel dosyasını seçin.")
     file_path = filedialog.askopenfilename(title="Excel Dosyası Seç", filetypes=[("Excel Dosyaları", "*.xlsx;*.xls")])
     
     if file_path:
-        save_config(file_path) # Yeni yolu kaydet
+        save_config(file_path) # Yeni seçimi kaydet
         return file_path
     
     return None
 
 def main():
+    # 1. Dosya Seçimi
     target_file = get_excel_file()
-    if not target_file: return
+    
+    if not target_file:
+        return
 
     try:
-        # Excel Okuma
+        # 2. Excel Okuma
         df_raw = pd.read_excel(target_file)
         df = pd.DataFrame()
         
@@ -93,40 +98,51 @@ def main():
         
         for col_excel, col_code in column_map.items():
             if col_excel in df_raw.columns:
-                df[col_code] = df_raw[col_excel].astype(str).replace(['nan', 'None', '', 'NaT'], 'Belirtilmemiş')
+                df[col_code] = df_raw[col_excel].astype(str)
             else:
-                df[col_code] = 'Belirtilmemiş'
-                
+                for raw_col in df_raw.columns:
+                    if raw_col.strip() == col_excel:
+                        df[col_code] = df_raw[raw_col].astype(str)
+                        break
+                if col_code not in df:
+                    df[col_code] = 'Belirtilmemiş'
+        
+        # NaN temizliği
+        for col in df.columns:
+            df[col] = df[col].replace(['nan', 'None', '', 'NaT', 'NaN'], 'Belirtilmemiş')
+            
         json_data = df.to_json(orient='records')
-
-        # Tasarımı Okuma
+        
+        # 3. Resimleri Yükle
+        logo_img = get_image_data("logo.webp") 
+        grafik_img = get_image_data("grafik_resmi.png")
+        sim_img = get_image_data("simulasyon_resmi.png")
+        
+        # 4. HTML Şablonunu Oku (Exe içinden veya yanından)
         template_path = resource_path("tasarim.html")
         if not os.path.exists(template_path):
-             template_path = "tasarim.html"
+            template_path = "tasarim.html"
 
         with open(template_path, "r", encoding="utf-8") as f:
-            html_content = f.read()
+            html_template = f.read()
 
-        # Resimler
-        logo_b64 = get_image_data("logo.webp")
-        grafik_b64 = get_image_data("grafik_resmi.png")
-        sim_b64 = get_image_data("simulasyon_resmi.png")
-
-        # Veri Entegrasyonu
-        final_html = html_content.replace("[[JSON_DATA]]", json_data)
-        final_html = final_html.replace("[[LOGO_SRC]]", logo_b64)
-        final_html = final_html.replace("[[GRAFIK_SRC]]", grafik_b64)
-        final_html = final_html.replace("[[SIM_SRC]]", sim_b64)
-
-        with open("Satis_Raporu.html", "w", encoding="utf-8") as f:
+        # 5. Verileri HTML'e Göm
+        final_html = html_template.replace("[[JSON_DATA]]", json_data)
+        final_html = final_html.replace("[[LOGO_SRC]]", logo_img)
+        final_html = final_html.replace("[[GRAFIK_SRC]]", grafik_img)
+        final_html = final_html.replace("[[SIM_SRC]]", sim_img)
+        
+        # 6. Çıktı Dosyası
+        output_file = "Satis_Raporu.html"
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(final_html)
-            
-        webbrowser.open("Satis_Raporu.html")
-
+        
+        webbrowser.open(output_file)
+        
     except Exception as e:
         root = tk.Tk()
         root.withdraw()
-        messagebox.showerror("Hata", f"Bir hata oluştu:\n{e}")
+        messagebox.showerror("Hata", f"Beklenmedik bir hata oluştu:\n{e}")
 
 if __name__ == "__main__":
     main()
