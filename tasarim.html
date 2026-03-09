@@ -600,23 +600,43 @@
             recalculateSim();
         }
         function recalculateSim() {
-            const c=document.getElementById('wi-cons').value;
-            const m=document.getElementById('wi-model').value;
-            const wC=parseInt(document.getElementById('w-cons').value);
-            const wM=parseInt(document.getElementById('w-model').value);
-            const wT=parseInt(document.getElementById('w-month').value);
+            // Seçimleri arayüzden al
+            const c = document.getElementById('wi-cons').value;
+            const m = document.getElementById('wi-model').value;
+            const mo = document.getElementById('wi-month').value; // AY VERİSİNİ ALIYORUZ
+
+            // Ağırlıkları (Slider değerlerini) al
+            const wC = parseInt(document.getElementById('w-cons').value);
+            const wM = parseInt(document.getElementById('w-model').value);
+            const wT = parseInt(document.getElementById('w-month').value);
+
+            // Gerçek Excel verisinden başarı oranını hesaplayan zeka
             const getR = (col, val) => {
                 const sub = cleanData.filter(d=>d[col]===val);
                 return sub.length ? (sub.filter(d=>d.Durum==="Satış").length/sub.length)*100 : 0;
             };
-            const rC=getR("Danışman Adı",c); const rM=getR("Model",m); const rT=20; 
+
+            // Puanları Hesapla
+            const rC = getR("Danışman Adı", c); 
+            const rM = getR("Model", m); 
+            const rT = getR("_Month", mo); // ARTIK SABİT 20 DEĞİL, SEÇİLEN AYIN GERÇEK GEÇMİŞ BAŞARISI!
+
+            // Ağırlıklı Ortalamayı Bul
             const final = ((rC*wC)+(rM*wM)+(rT*wT))/(wC+wM+wT);
+
+            // Ekrana Yazdır
             document.getElementById('result-score').innerText = "%" + final.toFixed(1);
-            document.getElementById('result-detail').innerText = `Danışman Başarısı: %${rC.toFixed(0)} | Model Başarısı: %${rM.toFixed(0)}`;
+            document.getElementById('result-detail').innerText = `Danışman Başarısı: %${rC.toFixed(0)} | Model Başarısı: %${rM.toFixed(0)} | Ay Ortalaması: %${rT.toFixed(0)}`;
+
+            // Dinamik Yapay Zeka Önerisi
             let msg = "";
-            if(rM<10) msg += `⚠️ ${m} modelinin satış oranı düşük. `;
-            if(final<30) msg += "💡 Farklı bir danışman veya model seçmeyi deneyin.";
-            document.getElementById('ai-suggestion').innerText = msg || "✅ Seçimler tutarlı görünüyor.";
+            if(rM < 10) msg += `⚠️ '${m}' modelinin genel satış dönüşümü çok düşük. `;
+            if(rT < 15) msg += `⚠️ '${mo}' ayında geçmiş verilere göre ofis geneli durgun geçiyor. `;
+            if(rC > 40 && rM > 30) msg += `🔥 Harika eşleşme! Bu danışman ve bu model güçlü bir kombinasyon. `;
+            else if(final < 30) msg += "💡 İhtimal düşük. Dönemi (Ayı), danışmanı veya modeli değiştirmek şansınızı artırabilir.";
+            
+            document.getElementById('ai-suggestion').innerText = msg || "✅ Seçimler tutarlı ve makul görünüyor.";
+        
         }
         function resetSim() { goToStep(1); }
         function openHome() { document.getElementById('simulation-page').style.display='none'; document.getElementById('dashboard-page').style.display='none'; document.getElementById('home-page').style.display='flex'; }
