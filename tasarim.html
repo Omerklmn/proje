@@ -120,6 +120,13 @@
     </style>
 </head>
 <body>
+    <div id="loading-screen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index:99999; flex-direction:column; align-items:center; justify-content:center;">
+        <div style="position:relative; width:150px; height:150px;">
+            <img src="gecis.png" style="position:absolute; bottom:0; left:0; width:100%; height:100%; object-fit:contain; opacity:0.15; filter: grayscale(100%);">
+            <img src="gecis.png" id="loading-fill-img" style="position:absolute; bottom:0; left:0; width:100%; height:100%; object-fit:contain; clip-path: inset(100% 0 0 0); transition: clip-path 1s cubic-bezier(0.25, 0.8, 0.25, 1);">
+        </div>
+        <div style="margin-top:30px; color:#00d4ff; font-weight:bold; letter-spacing:3px; font-size:12px;" class="ai-typing">HAZIRLANIYOR</div>
+    </div>
 
     <div id="settings-btn" class="floating-btn hide-on-print" onclick="openSettings()">
         <i class="fas fa-cog" style="color:black; font-size:24px;"></i>
@@ -590,13 +597,17 @@
             return { y: d.getFullYear().toString(), m: monthNames[d.getMonth()], idx: d.getMonth() };
         }
 
+        // --- SAYFA AÇILIŞLARI (GÜNCELLENDİ) ---
         function openDashboard() {
             if(rawData.length === 0) { alert("Veri yok!"); return; }
-            document.getElementById('home-page').style.display = 'none';
-            document.getElementById('dashboard-page').style.display = 'block';
-            processData();
-            initFilters();
-            updateDash();
+            showLoading(() => {
+                document.getElementById('home-page').style.display = 'none';
+                document.getElementById('simulation-page').style.display = 'none';
+                document.getElementById('dashboard-page').style.display = 'block';
+                processData();
+                initFilters();
+                updateDash();
+            });
         }
 
         function initFilters() {
@@ -734,9 +745,12 @@
             if(rawData.length===0) return;
             processData(); 
             if(cleanData.length === 0) { alert("Veri yok veya hepsi gizlenmiş!"); return; }
-            document.getElementById('home-page').style.display = 'none';
-            document.getElementById('simulation-page').style.display = 'block';
-            goToStep(1);
+            showLoading(() => {
+                document.getElementById('home-page').style.display = 'none';
+                document.getElementById('dashboard-page').style.display = 'none';
+                document.getElementById('simulation-page').style.display = 'block';
+                goToStep(1);
+            });
         }
         function goToStep(step) {
             document.querySelectorAll('.sim-step').forEach(el => el.classList.remove('active'));
@@ -771,7 +785,7 @@
                     d.style.transition = "transform 0.2s ease"; // Hafif animasyon
                     
                     // Doğrudan verideki isimle PNG çağırıyoruz (Örn: "Corolla.png")
-                    let imgSrc = i + ".webp";
+                    let imgSrc = "arabalar/" + i + ".webp";
 
                     // Yazı üstte, araba resmi altta (Kutu yok, sadece gölgeli araba)
                     // onerror kısmı: klasörde o resim yoksa standart araba ikonu gösterir
@@ -839,7 +853,13 @@
             document.getElementById('result-detail').innerText = `Danışman Başarısı: %${rC.toFixed(0)} | Model Başarısı: %${rM.toFixed(0)} | Ay Ortalaması: %${rT.toFixed(0)}`;
         }
         function resetSim() { goToStep(1); }
-        function openHome() { document.getElementById('simulation-page').style.display='none'; document.getElementById('dashboard-page').style.display='none'; document.getElementById('home-page').style.display='flex'; }
+        function openHome() { 
+            showLoading(() => {
+                document.getElementById('simulation-page').style.display='none'; 
+                document.getElementById('dashboard-page').style.display='none'; 
+                document.getElementById('home-page').style.display='flex'; 
+            });
+        }
 
         // --- AYARLAR ---
         let activeCategory = "Model";
