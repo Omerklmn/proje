@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Yönetim Paneli - Ultimate Pro</title>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         body { background-color: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow-x: hidden; }
@@ -46,10 +47,18 @@
         .select-all-label { font-weight: bold; color: #00d4ff; border-bottom: 2px solid #444 !important; margin-bottom: 5px; }
 
         .kpi-container { display: flex; gap: 20px; margin-bottom: 20px; }
-        .kpi-card { background: #1f1f1f; flex: 1; padding: 20px; border-radius: 10px; text-align: center; border-top: 4px solid #00d4ff; }
+        .kpi-card { background: #1f1f1f; flex: 1; padding: 20px; border-radius: 10px; text-align: center; border-top: 4px solid #00d4ff; position: relative; }
         .kpi-val { font-size: 30px; font-weight: bold; display: block; margin-top: 5px; }
+        .kpi-sub { font-size: 11px; color: #aaa; margin-top: 5px; display: block; }
         
-        /* DEĞİŞİKLİK BURADA: grid-template-columns: 1fr yapıldı (Tek sütun, alt alta) */
+        /* YAPAY ZEKA PANELİ */
+        .ai-panel { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid #334155; border-radius: 10px; margin-bottom: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .ai-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 15px; margin-bottom: 15px; }
+        .ai-title { font-weight: bold; font-size: 18px; color: #00d4ff; display: flex; align-items: center; gap: 10px; }
+        .ai-content { font-size: 15px; line-height: 1.6; color: #e2e8f0; min-height: 60px; }
+        .ai-typing::after { content: '|'; animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
         .grid { display: grid; grid-template-columns: 1fr; gap: 30px; position: relative; z-index: 1; }
         .chart-box { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #333; height: 500px; }
 
@@ -112,11 +121,11 @@
 </head>
 <body>
 
-    <div id="settings-btn" class="floating-btn" onclick="openSettings()">
+    <div id="settings-btn" class="floating-btn hide-on-print" onclick="openSettings()">
         <i class="fas fa-cog" style="color:black; font-size:24px;"></i>
     </div>
 
-    <div id="settings-modal">
+    <div id="settings-modal" class="hide-on-print">
         <div class="settings-content">
             <div class="settings-sidebar">
                 <h3 style="margin:0 0 10px 0; color:#fff;">Kategoriler</h3>
@@ -177,11 +186,14 @@
 
     <div id="dashboard-page">
         <div class="dash-header">
-            <button class="btn-back" onclick="openHome()">← ANA MENÜ</button>
+            <button class="btn-back hide-on-print" onclick="openHome()">← ANA MENÜ</button>
             <h2 style="color:#00d4ff; margin:0;">📈 Analiz Paneli</h2>
-            <div></div>
+            <button class="btn-action btn-success hide-on-print" style="padding:10px 20px; font-size:14px; border-radius:5px;" onclick="exportPDF()">
+                <i class="fas fa-file-pdf"></i> Raporu İndir
+            </button>
         </div>
-        <div class="filter-container">
+        
+        <div class="filter-container hide-on-print">
             <div class="multi-select-box">
                 <label style="font-size:11px; color:#aaa;">👤 DANIŞMAN</label>
                 <div class="select-btn" onclick="toggleDropdown('list-danisman')" id="btn-danisman">Hepsi</div>
@@ -198,11 +210,39 @@
                 <div class="checkbox-list" id="list-tarih"></div>
             </div>
         </div>
+
         <div class="kpi-container">
-            <div class="kpi-card">GÖRÜŞME <span id="k-top" class="kpi-val">0</span></div>
-            <div class="kpi-card" style="border-top-color:#2ecc71">SATIŞ <span id="k-sat" class="kpi-val" style="color:#2ecc71">0</span></div>
-            <div class="kpi-card" style="border-top-color:#f1c40f">BAŞARI <span id="k-ora" class="kpi-val" style="color:#f1c40f">%0</span></div>
+            <div class="kpi-card">
+                GÖRÜŞME <span id="k-top" class="kpi-val">0</span>
+                <span class="kpi-sub">Seçilen Filtrelere Göre</span>
+            </div>
+            <div class="kpi-card" style="border-top-color:#2ecc71">
+                SATIŞ <span id="k-sat" class="kpi-val" style="color:#2ecc71">0</span>
+                <span class="kpi-sub">Seçilen Filtrelere Göre</span>
+            </div>
+            <div class="kpi-card" style="border-top-color:#f1c40f">
+                BAŞARI ORANI <span id="k-ora" class="kpi-val" style="color:#f1c40f">%0</span>
+                <span class="kpi-sub">(Genel Ortalamaya Göre Trend)</span>
+            </div>
         </div>
+
+        <div class="ai-panel">
+            <div class="ai-header">
+                <div class="ai-title"><i class="fas fa-robot"></i> Yapay Zeka Asistanı</div>
+                <div class="ai-btn-group hide-on-print">
+                    <button class="btn-action" style="background:#8e44ad; padding:8px 15px; border-radius:5px; font-size:13px;" onclick="aiYorumla()">
+                        <i class="fas fa-chart-line"></i> Durumu Yorumla
+                    </button>
+                    <button class="btn-action" style="background:#f39c12; color:black; padding:8px 15px; border-radius:5px; font-size:13px;" onclick="aiOneriVer()">
+                        <i class="fas fa-lightbulb"></i> Öneri Ver
+                    </button>
+                </div>
+            </div>
+            <div class="ai-content" id="ai-response">
+                Analiz yapmak için yukarıdaki "Durumu Yorumla" veya "Öneri Ver" butonlarını kullanabilirsiniz...
+            </div>
+        </div>
+
         <div class="grid">
             <div class="chart-box" id="c-durum"></div>
             <div class="chart-box" id="c-model"></div>
@@ -265,6 +305,7 @@
         let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
         let hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')) || [];
         let cleanData = [];
+        let currentFilteredData = []; // Yapay Zeka için filtrelenmiş veriyi tutar
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
         window.onclick = function(event) {
@@ -283,7 +324,87 @@
             event.stopPropagation();
         }
 
-        // --- VERİ İŞLEME ---
+        // --- PDF İNDİRME FONKSİYONU ---
+        function exportPDF() {
+            // Butonları ve ayar çarkını gizle
+            document.querySelectorAll('.hide-on-print').forEach(el => el.style.display = 'none');
+            
+            const element = document.getElementById('dashboard-page');
+            const opt = {
+                margin:       10,
+                filename:     'Satis_Analiz_Raporu.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, backgroundColor: '#0e1117' },
+                jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
+            };
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                // İşlem bitince butonları geri getir
+                document.querySelectorAll('.hide-on-print').forEach(el => el.style.display = '');
+            });
+        }
+
+        // --- YAPAY ZEKA FONKSİYONLARI ---
+        function typeWriter(id, txt) {
+            let el = document.getElementById(id);
+            el.innerHTML = "";
+            el.classList.add("ai-typing");
+            let i = 0;
+            function type() {
+                if(i < txt.length) {
+                    el.innerHTML += txt.charAt(i);
+                    i++;
+                    setTimeout(type, 20); // Yazma hızı
+                } else {
+                    el.classList.remove("ai-typing");
+                }
+            }
+            type();
+        }
+
+        function aiYorumla() {
+            if(!currentFilteredData || currentFilteredData.length === 0) return typeWriter("ai-response", "Analiz edilecek veri bulunamadı.");
+            
+            let nTot = currentFilteredData.length;
+            let nSat = currentFilteredData.filter(d=>d.Durum==="Satış").length;
+            let rate = nTot > 0 ? (nSat/nTot*100).toFixed(1) : 0;
+
+            let cCounts = count(currentFilteredData.filter(d=>d.Durum==="Satış"), "Danışman Adı");
+            let cKeys = Object.keys(cCounts).sort((a,b)=>cCounts[b]-cCounts[a]);
+            let bestC = cKeys.length > 0 ? cKeys[0] : "Bulunamadı";
+
+            let mCounts = count(currentFilteredData, "Model");
+            let mKeys = Object.keys(mCounts).sort((a,b)=>mCounts[b]-mCounts[a]);
+            let topM = mKeys.length > 0 ? mKeys[0] : "Belirsiz";
+
+            let text = `🤖 Analiz: Mevcut filtrelere göre toplam ${nTot} müşteri görüşmesi yapılmış ve %${rate} oranında satış kapatılmıştır. Bu dönemde Satış Şampiyonu '${bestC}' olarak öne çıkarken, müşterilerin en yoğun ilgi gösterdiği ve trafiği çeken model '${topM}' olmuştur.`;
+            typeWriter("ai-response", text);
+        }
+
+        function aiOneriVer() {
+            if(!currentFilteredData || currentFilteredData.length === 0) return typeWriter("ai-response", "Veri yok, öneri üretilemiyor.");
+            
+            let kayip = currentFilteredData.filter(d=>d.Durum!=="Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş");
+            if(kayip.length === 0) return typeWriter("ai-response", "💡 Harika! Seçili filtrelerde belirgin bir kayıp nedeni görünmüyor veya satış oranı kusursuz.");
+
+            let kCounts = count(kayip, "Kayıp Nedeni");
+            let topK = Object.keys(kCounts).sort((a,b)=>kCounts[b]-kCounts[a])[0];
+            let topKLower = topK.toLowerCase();
+
+            let text = "";
+            if(topKLower.includes("fiyat") || topKLower.includes("finans") || topKLower.includes("pahalı")) {
+                text = `💡 Stratejik Öneri: İptallerin zirvesinde '${topK}' problemi var. Danışmanların kredi faiz oranları, vade seçenekleri ve takas destekleri konusunda daha proaktif olmaları satış kapatma oranını doğrudan artıracaktır.`;
+            } else if(topKLower.includes("ulaş") || topKLower.includes("cevap") || topKLower.includes("dönüş")) {
+                text = `💡 Stratejik Öneri: '${topK}' problemi dikkat çekiyor. İlk temas stratejinizi değiştirin: Arama saatlerini optimize edin veya aramadan önce WhatsApp üzerinden sıcak bir karşılama/randevu mesajı atmayı deneyin.`;
+            } else if(topKLower.includes("rakip") || topKLower.includes("başka")) {
+                 text = `💡 Stratejik Öneri: Müşteriler '${topK}' nedeniyle kaybediliyor. Modellerinizin rakip markalara göre avantajlarını (donanım, servis, garanti süresi) vurgulayan bir "Karşılaştırma Tablosu" hazırlayıp danışmanların elinin altında bulundurun.`;
+            } else {
+                text = `💡 Stratejik Öneri: Müşteri kayıplarında ağırlıklı olarak '${topK}' nedeni saptanmıştır. Ekibin bu spesifik itirazı rahatça karşılayabilmesi için kısa bir iç eğitim veya role-play toplantısı organize etmeniz tavsiye edilir.`;
+            }
+            typeWriter("ai-response", text);
+        }
+
+        // --- VERİ İŞLEME VE FİLTRELER ---
         function processData() {
             const availableModels = new Set(rawData.map(d => d["Model"]));
             for(let gName in globalGroups["Model"]) {
@@ -330,7 +451,6 @@
             updateDash();
         }
 
-        // --- FİLTRELER VE CHART ---
         function initFilters() {
             if(cleanData.length === 0) return;
             setupChecklist("list-danisman", [...new Set(cleanData.map(d => d["Danışman Adı"]))].sort(), "btn-danisman");
@@ -369,24 +489,50 @@
             const selDanisman = getSelected("list-danisman");
             const selModel = getSelected("list-model");
             const selDatePairs = getSelectedDateFilters();
-            updateBtnText("btn-danisman", selDanisman, "Danışman"); updateBtnText("btn-model", selModel, "Model");
-            const totalMonths = document.querySelectorAll(".tree-month-check").length; const selMonths = document.querySelectorAll(".tree-month-check:checked").length; document.getElementById("btn-tarih").innerHTML = (selMonths === totalMonths) ? "Hepsi ▼" : selMonths + " Ay ▼";
+            
+            updateBtnText("btn-danisman", selDanisman, "Danışman"); 
+            updateBtnText("btn-model", selModel, "Model");
+            
+            const totalMonths = document.querySelectorAll(".tree-month-check").length; 
+            const selMonths = document.querySelectorAll(".tree-month-check:checked").length; 
+            document.getElementById("btn-tarih").innerHTML = (selMonths === totalMonths) ? "Hepsi ▼" : selMonths + " Ay ▼";
+            
             const filtered = cleanData.filter(d => selDanisman.includes(d["Danışman Adı"]) && selModel.includes(d["Model"]) && selDatePairs.includes(d["_Year"] + "-" + d["_Month"]));
+            
+            // Global filtre datasını güncelle (Yapay zeka için)
+            currentFilteredData = filtered;
+
             document.getElementById("k-top").innerText = filtered.length;
             const nSat = filtered.filter(d => d["Durum"] === "Satış").length;
             document.getElementById("k-sat").innerText = nSat;
-            document.getElementById("k-ora").innerText = "%" + (filtered.length > 0 ? (nSat/filtered.length*100).toFixed(1) : 0);
+            
+            // TREND OKLARI HESAPLAMASI (Öneri 3)
+            let overallTotal = cleanData.length;
+            let overallSat = cleanData.filter(d => d.Durum === "Satış").length;
+            let overallRate = overallTotal > 0 ? (overallSat / overallTotal * 100) : 0;
+            
+            let curRate = filtered.length > 0 ? (nSat / filtered.length * 100) : 0;
+            let diff = (curRate - overallRate).toFixed(1);
+            
+            let arrowHtml = "";
+            if (diff > 0) arrowHtml = `<span style="color:#2ecc71; font-size:16px; margin-left:10px;">▲ (+%${diff})</span>`;
+            else if (diff < 0) arrowHtml = `<span style="color:#e74c3c; font-size:16px; margin-left:10px;">▼ (%${Math.abs(diff)})</span>`;
+            else arrowHtml = `<span style="color:#aaa; font-size:16px; margin-left:10px;">➖ (%0)</span>`;
+
+            document.getElementById("k-ora").innerHTML = "%" + curRate.toFixed(1) + arrowHtml;
+
             renderCharts(filtered);
+            
+            // Filtre değiştiğinde AI yanıtını sıfırla
+            document.getElementById("ai-response").innerHTML = "Filtreler güncellendi. Yeni analiz için yukarıdaki butonları kullanabilirsiniz...";
         }
 
         function renderCharts(data) {
-            // Dinamik margin fonksiyonu
             function getDynamicMargin(labels) { if(!labels || labels.length === 0) return 100; const maxLen = labels.reduce((a, b) => Math.max(a, b.length), 0); return Math.max(100, maxLen * 8); }
             const baseLayout = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'white'}, margin:{t:40,l:40,r:20, b:50} };
             
-            // --- MODEL GRAFİĞİ (DEĞİŞTİ: YATAY OLDU) ---
             const models = [...new Set(data.map(d => d.Model))]; 
-            const marginModel = getDynamicMargin(models); // Soldan margin hesapla (isim uzunluğuna göre)
+            const marginModel = getDynamicMargin(models); 
             const satisData = models.map(m => data.filter(d => d.Model === m && d.Durum === "Satış").length);
             const digerData = models.map(m => data.filter(d => d.Model === m && d.Durum !== "Satış").length);
             
@@ -394,23 +540,16 @@
                 { x: satisData, y: models, name: 'Satış', type: 'bar', orientation: 'h', marker:{color:'#2ecc71'} }, 
                 { x: digerData, y: models, name: 'Diğer', type: 'bar', orientation: 'h', marker:{color:'#e74c3c'} }
             ], { 
-                ...baseLayout, 
-                title: 'Model Performansı', 
-                barmode:'stack', 
-                // ÖNEMLİ: Margin-Left (l) artık dinamik, çünkü yazılar solda.
-                margin:{ l: marginModel, r:20, t:40, b:20 } 
+                ...baseLayout, title: 'Model Performansı', barmode:'stack', margin:{ l: marginModel, r:20, t:40, b:20 } 
             });
 
-            // --- DURUM PASTA GRAFİĞİ (Değişmedi) ---
             const d1 = count(data, "Durum"); 
             Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...baseLayout, title: 'Satış Durumu' });
             
-            // --- KAYIP NEDENLERİ (Alt alta olduğu için margin-bottom önemli) ---
             const kData = count(data.filter(d => d.Durum !== "Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni"); 
             const marginKayip = getDynamicMargin(Object.keys(kData));
             Plotly.newPlot('c-kayip', [{ x: Object.keys(kData), y: Object.values(kData), type: 'bar', marker:{color: '#f1c40f'} }], { ...baseLayout, title: 'Kayıp Nedenleri', margin: { b: marginKayip, l: 40, r: 20, t: 40 } });
             
-            // --- LEAD KAYNAĞI ---
             const lData = count(data, "Lead Kaynağı"); 
             const marginLead = getDynamicMargin(Object.keys(lData)); 
             Plotly.newPlot('c-lead', [{ x: Object.keys(lData), y: Object.values(lData), type: 'bar', marker:{color: '#9b59b6'} }], { ...baseLayout, title: 'Lead Kaynağı', margin:{ b: marginLead, l: 40, r: 20, t: 40 } });
