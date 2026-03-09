@@ -249,6 +249,10 @@
             <div class="ai-content" id="ai-response">
                 Analiz yapmak için yukarıdaki "Durumu Yorumla" veya "Öneri Ver" butonlarını kullanabilirsiniz...
             </div>
+            <div class="hide-on-print" style="margin-top: 15px; display: flex; gap: 10px; border-top: 1px solid #334155; padding-top: 15px;">
+                <input type="text" id="ai-custom-prompt" placeholder="Yapay zekaya bu grafiklerle ilgili özel bir soru sorun..." style="flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #334155; background: #0f172a; color: white; font-size:14px;">
+                <button class="btn-action btn-success" style="padding: 10px 20px; font-size:14px;" onclick="aiOzelSoru()">Gönder</button>
+            </div>
         </div>
 
         <div class="grid">
@@ -296,12 +300,28 @@
                         <div class="control-group"><label>Ay</label><select id="wi-month" class="control-select" onchange="recalculateSim()"></select></div>
                     </div>
                     <div class="slider-row">
-    <div class="slider-group"><label>Danışman Etkisi <span id="val-cons" style="color:#00d4ff; font-weight:bold;">%50</span></label><input type="range" id="w-cons" class="weight-slider" value="50" oninput="recalculateSim()"></div>
-    <div class="slider-group"><label>Model Etkisi <span id="val-model" style="color:#00d4ff; font-weight:bold;">%30</span></label><input type="range" id="w-model" class="weight-slider" value="30" oninput="recalculateSim()"></div>
-    <div class="slider-group"><label>Zaman Etkisi <span id="val-month" style="color:#00d4ff; font-weight:bold;">%20</span></label><input type="range" id="w-month" class="weight-slider" value="20" oninput="recalculateSim()"></div>
-</div>
+                        <div class="slider-group"><label>Danışman Etkisi <span id="val-cons" style="color:#00d4ff; font-weight:bold;">%50</span></label><input type="range" id="w-cons" class="weight-slider" value="50" oninput="recalculateSim()"></div>
+                        <div class="slider-group"><label>Model Etkisi <span id="val-model" style="color:#00d4ff; font-weight:bold;">%30</span></label><input type="range" id="w-model" class="weight-slider" value="30" oninput="recalculateSim()"></div>
+                        <div class="slider-group"><label>Zaman Etkisi <span id="val-month" style="color:#00d4ff; font-weight:bold;">%20</span></label><input type="range" id="w-month" class="weight-slider" value="20" oninput="recalculateSim()"></div>
+                    </div>
                 </div>
-                <div id="ai-suggestion" style="margin-top:20px; color:#f39c12; text-align:center; font-style:italic;"></div>
+                
+                <div class="ai-panel" style="margin-top: 20px;">
+                    <div class="ai-header">
+                        <div class="ai-title"><i class="fas fa-robot"></i> Simülasyon Asistanı</div>
+                        <button class="btn-action" style="background:#8e44ad; padding:8px 15px; border-radius:5px; font-size:13px;" onclick="aiSimYorumla()">
+                            <i class="fas fa-magic"></i> Bu Senaryoyu Yorumla
+                        </button>
+                    </div>
+                    <div class="ai-content" id="sim-ai-response" style="font-size:14px;">
+                        Senaryoyu yorumlatmak için yukarıdaki tuşa basın veya aşağıdan özel bir soru sorun...
+                    </div>
+                    <div style="margin-top: 15px; display: flex; gap: 10px; border-top: 1px solid #334155; padding-top: 15px;">
+                        <input type="text" id="sim-custom-prompt" placeholder="Bu senaryoyu nasıl geliştirebilirim? vb. sorun..." style="flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #334155; background: #0f172a; color: white;">
+                        <button class="btn-action btn-success" style="padding: 10px 20px;" onclick="aiSimOzelSoru()">Gönder</button>
+                    </div>
+                </div>
+
                 <button class="btn-back" onclick="resetSim()" style="margin-top:20px; background:#34495e;">Yeni Simülasyon</button>
             </div>
         </div>
@@ -407,30 +427,55 @@
 
         function aiYorumla() {
             if(!currentFilteredData || currentFilteredData.length === 0) return typeWriter("ai-response", "Analiz edilecek veri bulunamadı.");
-            
             let nTot = currentFilteredData.length;
             let nSat = currentFilteredData.filter(d=>d.Durum==="Satış").length;
             let rate = nTot > 0 ? (nSat/nTot*100).toFixed(1) : 0;
             
-            // Gemini'a göndereceğimiz özel komut (Prompt)
-            let prompt = `Sen otomotiv sektöründe uzman bir satış yöneticisisin. Şu an ekrandaki verilere göre: Toplam ${nTot} müşteri görüşmesi yapıldı ve bunların %${rate}'si satışa dönüştü. Lütfen bu durumu maksimum 2-3 cümleyle, havalı ve profesyonel bir şirket diliyle yorumla. Doğrudan yoruma başla, merhaba deme.`;
-            
+            let prompt = `Sen uzman bir otomotiv satış yöneticisisin. Karşında yöneticin Aykut Bey var, ona her zaman saygıyla 'Aykut Bey' diye hitap et. Şu anki filtrelere göre: Toplam ${nTot} müşteri görüşmesi yapıldı ve bunların %${rate}'si satışa dönüştü. Lütfen Aykut Bey'e bu durumu maksimum 3 cümleyle profesyonelce yorumla.`;
             callGemini(prompt, "ai-response");
         }
 
         function aiOneriVer() {
             if(!currentFilteredData || currentFilteredData.length === 0) return typeWriter("ai-response", "Veri yok, öneri üretilemiyor.");
-            
             let kayip = currentFilteredData.filter(d=>d.Durum!=="Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş");
             if(kayip.length === 0) return typeWriter("ai-response", "💡 Kayıp verisi yok, oranlar mükemmel!");
-
-            let kCounts = count(kayip, "Kayıp Nedeni");
-            let topK = Object.keys(kCounts).sort((a,b)=>kCounts[b]-kCounts[a])[0]; // En çok kaybedilen neden
+            let topK = Object.keys(count(kayip, "Kayıp Nedeni")).sort((a,b)=>count(kayip, "Kayıp Nedeni")[b]-count(kayip, "Kayıp Nedeni")[a])[0]; 
             
-            // Gemini'a göndereceğimiz özel komut (Prompt)
-            let prompt = `Sen profesyonel bir otomotiv satış stratejistisin. Ekibimiz en çok "${topK}" nedeni yüzünden müşteri kaybediyor. Satış ekibine bu spesifik itirazı kırmak ve satışa döndürmek için uygulanabilir, vizyoner ve vurucu tek bir stratejik taktik ver. Maksimum 3 cümle olsun.`;
-            
+            let prompt = `Sen profesyonel bir satış stratejistisin. Yöneticin Aykut Bey'e hitap ederek yaz (Bana Aykut Bey de). Ekibimiz en çok "${topK}" nedeni yüzünden müşteri kaybediyor. Satış ekibine bu itirazı kırmak için uygulanabilir tek bir taktik ver. Maksimum 3 cümle olsun.`;
             callGemini(prompt, "ai-response");
+        }
+
+        function aiOzelSoru() {
+            let soru = document.getElementById("ai-custom-prompt").value.trim();
+            if(!soru) return;
+            let nTot = currentFilteredData.length;
+            let nSat = currentFilteredData.filter(d=>d.Durum==="Satış").length;
+            let prompt = `Sen bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun (Hitabın Aykut Bey olsun). Toplam ${nTot} görüşme ve %${(nSat/nTot*100).toFixed(1)} satış var. Aykut Bey'in sorusu şu: "${soru}". Lütfen doğrudan, kısa ve net bir cevap ver.`;
+            callGemini(prompt, "ai-response");
+            document.getElementById("ai-custom-prompt").value = ""; // Kutuyu temizle
+        }
+
+        function getSimContext() {
+            let c = document.getElementById('wi-cons').value;
+            let m = document.getElementById('wi-model').value;
+            let mo = document.getElementById('wi-month').value;
+            let final = document.getElementById('result-score').innerText;
+            return `Danışman: ${c}, Model: ${m}, Ay: ${mo}. Sistemin hesapladığı Başarı İhtimali: ${final}.`;
+        }
+
+        function aiSimYorumla() {
+            let context = getSimContext();
+            let prompt = `Sen bir otomotiv satış danışmanısın. Yöneticin Aykut Bey sana simülasyon verileri veriyor. Mutlaka 'Aykut Bey' diye hitap et. Senaryo: ${context} Bu senaryonun güçlü ve zayıf yanını 2-3 cümleyle Aykut Bey'e özetle.`;
+            callGemini(prompt, "sim-ai-response");
+        }
+
+        function aiSimOzelSoru() {
+            let soru = document.getElementById("sim-custom-prompt").value.trim();
+            if(!soru) return;
+            let context = getSimContext();
+            let prompt = `Sen bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun. Simülasyon Senaryosu: ${context}. Aykut Bey'in sorusu: "${soru}". Buna profesyonel, kısa ve akılcı bir cevap ver. Aykut Bey diye hitap etmeyi unutma.`;
+            callGemini(prompt, "sim-ai-response");
+            document.getElementById("sim-custom-prompt").value = "";
         }
 
         // --- VERİ İŞLEME VE FİLTRELER ---
@@ -519,7 +564,7 @@
                     updateDash(); 
                 };
                 
-                // 2. AYLARA TIKLANDIĞINDA GRAFİĞİ GÜNCELLEME KODU (Senin istediğin düzeltme burasıydı!)
+                // 2. AYLARA TIKLANDIĞINDA GRAFİĞİ GÜNCELLEME KODU
                 monthsContainer.querySelectorAll(".tree-month-check").forEach(mCheck => {
                     mCheck.onchange = function() { 
                         // Eğer bir ayın tikini kaldırırsak, üstteki 'Yıl' tikini de otomatik kaldır
@@ -559,7 +604,7 @@
             const nSat = filtered.filter(d => d["Durum"] === "Satış").length;
             document.getElementById("k-sat").innerText = nSat;
             
-            // TREND OKLARI HESAPLAMASI (Öneri 3)
+            // TREND OKLARI HESAPLAMASI
             let overallTotal = cleanData.length;
             let overallSat = cleanData.filter(d => d.Durum === "Satış").length;
             let overallRate = overallTotal > 0 ? (overallSat / overallTotal * 100) : 0;
@@ -656,14 +701,14 @@
             // Seçimleri arayüzden al
             const c = document.getElementById('wi-cons').value;
             const m = document.getElementById('wi-model').value;
-            const mo = document.getElementById('wi-month').value; // AY VERİSİNİ ALIYORUZ
+            const mo = document.getElementById('wi-month').value; 
 
             // Ağırlıkları (Slider değerlerini) al
             const wC = parseInt(document.getElementById('w-cons').value);
             const wM = parseInt(document.getElementById('w-model').value);
             const wT = parseInt(document.getElementById('w-month').value);
             
-            // EKRANA YÜZDELERİ YAZDIRMA KODU (BURAYI EKLİYORUZ 👇)
+            // EKRANA YÜZDELERİ YAZDIRMA KODU 
             document.getElementById('val-cons').innerText = "%" + wC;
             document.getElementById('val-model').innerText = "%" + wM;
             document.getElementById('val-month').innerText = "%" + wT;
@@ -677,7 +722,7 @@
             // Puanları Hesapla
             const rC = getR("Danışman Adı", c); 
             const rM = getR("Model", m); 
-            const rT = getR("_Month", mo); // ARTIK SABİT 20 DEĞİL, SEÇİLEN AYIN GERÇEK GEÇMİŞ BAŞARISI!
+            const rT = getR("_Month", mo); 
 
             // Ağırlıklı Ortalamayı Bul
             const final = ((rC*wC)+(rM*wM)+(rT*wT))/(wC+wM+wT);
@@ -685,16 +730,6 @@
             // Ekrana Yazdır
             document.getElementById('result-score').innerText = "%" + final.toFixed(1);
             document.getElementById('result-detail').innerText = `Danışman Başarısı: %${rC.toFixed(0)} | Model Başarısı: %${rM.toFixed(0)} | Ay Ortalaması: %${rT.toFixed(0)}`;
-
-            // Dinamik Yapay Zeka Önerisi
-            let msg = "";
-            if(rM < 10) msg += `⚠️ '${m}' modelinin genel satış dönüşümü çok düşük. `;
-            if(rT < 15) msg += `⚠️ '${mo}' ayında geçmiş verilere göre ofis geneli durgun geçiyor. `;
-            if(rC > 40 && rM > 30) msg += `🔥 Harika eşleşme! Bu danışman ve bu model güçlü bir kombinasyon. `;
-            else if(final < 30) msg += "💡 İhtimal düşük. Dönemi (Ayı), danışmanı veya modeli değiştirmek şansınızı artırabilir.";
-            
-            document.getElementById('ai-suggestion').innerText = msg || "✅ Seçimler tutarlı ve makul görünüyor.";
-        
         }
         function resetSim() { goToStep(1); }
         function openHome() { document.getElementById('simulation-page').style.display='none'; document.getElementById('dashboard-page').style.display='none'; document.getElementById('home-page').style.display='flex'; }
@@ -702,14 +737,12 @@
         // --- AYARLAR ---
         let activeCategory = "Model";
         
-        // AYARLAR AÇILIRKEN API ANAHTARINI GETİR (GÜNCELLENDİ)
         function openSettings() { 
             document.getElementById('settings-modal').style.display = 'flex'; 
             setCategory(activeCategory); 
             document.getElementById('gemini-api-key').value = localStorage.getItem('geminiApiKey') || "";
         }
         
-        // AYARLAR KAYDEDİLİRKEN API ANAHTARINI KAYDET (GÜNCELLENDİ)
         function saveAndCloseSettings() { 
             localStorage.setItem('geminiApiKey', document.getElementById('gemini-api-key').value.trim());
             localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); 
