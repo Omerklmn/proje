@@ -134,7 +134,15 @@
                 <button class="cat-btn" onclick="setCategory('Durum')">📊 Durumlar</button>
                 <button class="cat-btn" onclick="setCategory('Kayıp Nedeni')">❌ Kayıp Nedenleri</button>
                 <button class="cat-btn" onclick="setCategory('Lead Kaynağı')">🔗 Lead Kaynakları</button>
+                
                 <div style="flex:1;"></div>
+                
+                <div style="margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; margin-bottom: 15px;">
+                    <label style="color:#aaa; font-size:12px; font-weight:bold;">Gemini API Anahtarı (Flash)</label>
+                    <input type="password" id="gemini-api-key" placeholder="AIzaSy..." style="width:90%; padding:8px; margin-top:5px; background:#222; border:1px solid #444; color:white; border-radius:4px;">
+                    <div style="font-size:10px; color:#f39c12; margin-top:5px;">*Ücretsiz anahtarı Google AI Studio'dan alabilirsiniz.</div>
+                </div>
+
                 <button class="cat-btn" style="background:#27ae60; color:white; text-align:center; margin-bottom:5px;" onclick="saveAndCloseSettings()">KAYDET VE ÇIK</button>
                 <button class="cat-btn" style="background:#e74c3c; color:white; text-align:center;" onclick="discardAndCloseSettings()">KAYDETMEDEN ÇIK</button>
             </div>
@@ -362,46 +370,67 @@
             type();
         }
 
+        // GEMINI API Cagirici Fonksiyon
+        async function callGemini(prompt, targetElementId) {
+            const apiKey = localStorage.getItem('geminiApiKey');
+            const el = document.getElementById(targetElementId);
+            
+            if(!apiKey) {
+                return typeWriter(targetElementId, "⚠️ Lütfen önce Ayarlar menüsünden Google Gemini API anahtarınızı girin.");
+            }
+
+            // Yükleniyor animasyonu
+            el.innerHTML = "<span class='ai-typing' style='color:#f39c12;'>Gemini Flash Analiz Ediyor...</span>";
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                const data = await response.json();
+                
+                if(data.error) throw new Error(data.error.message);
+                
+                const answer = data.candidates[0].content.parts[0].text;
+                
+                // Gelen cevabı daktilo efektiyle yazdır
+                typeWriter(targetElementId, "🤖 " + answer.replace(/\*/g, '')); // Yıldızları temizliyoruz
+                
+            } catch (error) {
+                typeWriter(targetElementId, "❌ Hata oluştu: API Anahtarınızı kontrol edin veya internet bağlantınızı doğrulayın. Detay: " + error.message);
+            }
+        }
+
         function aiYorumla() {
             if(!currentFilteredData || currentFilteredData.length === 0) return typeWriter("ai-response", "Analiz edilecek veri bulunamadı.");
             
             let nTot = currentFilteredData.length;
             let nSat = currentFilteredData.filter(d=>d.Durum==="Satış").length;
             let rate = nTot > 0 ? (nSat/nTot*100).toFixed(1) : 0;
-
-            let cCounts = count(currentFilteredData.filter(d=>d.Durum==="Satış"), "Danışman Adı");
-            let cKeys = Object.keys(cCounts).sort((a,b)=>cCounts[b]-cCounts[a]);
-            let bestC = cKeys.length > 0 ? cKeys[0] : "Bulunamadı";
-
-            let mCounts = count(currentFilteredData, "Model");
-            let mKeys = Object.keys(mCounts).sort((a,b)=>mCounts[b]-mCounts[a]);
-            let topM = mKeys.length > 0 ? mKeys[0] : "Belirsiz";
-
-            let text = `🤖 Analiz: Mevcut filtrelere göre toplam ${nTot} müşteri görüşmesi yapılmış ve %${rate} oranında satış kapatılmıştır. Bu dönemde Satış Şampiyonu '${bestC}' olarak öne çıkarken, müşterilerin en yoğun ilgi gösterdiği ve trafiği çeken model '${topM}' olmuştur.`;
-            typeWriter("ai-response", text);
+            
+            // Gemini'a göndereceğimiz özel komut (Prompt)
+            let prompt = `Sen otomotiv sektöründe uzman bir satış yöneticisisin. Şu an ekrandaki verilere göre: Toplam ${nTot} müşteri görüşmesi yapıldı ve bunların %${rate}'si satışa dönüştü. Lütfen bu durumu maksimum 2-3 cümleyle, havalı ve profesyonel bir şirket diliyle yorumla. Doğrudan yoruma başla, merhaba deme.`;
+            
+            callGemini(prompt, "ai-response");
         }
 
         function aiOneriVer() {
             if(!currentFilteredData || currentFilteredData.length === 0) return typeWriter("ai-response", "Veri yok, öneri üretilemiyor.");
             
             let kayip = currentFilteredData.filter(d=>d.Durum!=="Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş");
-            if(kayip.length === 0) return typeWriter("ai-response", "💡 Harika! Seçili filtrelerde belirgin bir kayıp nedeni görünmüyor veya satış oranı kusursuz.");
+            if(kayip.length === 0) return typeWriter("ai-response", "💡 Kayıp verisi yok, oranlar mükemmel!");
 
             let kCounts = count(kayip, "Kayıp Nedeni");
-            let topK = Object.keys(kCounts).sort((a,b)=>kCounts[b]-kCounts[a])[0];
-            let topKLower = topK.toLowerCase();
-
-            let text = "";
-            if(topKLower.includes("fiyat") || topKLower.includes("finans") || topKLower.includes("pahalı")) {
-                text = `💡 Stratejik Öneri: İptallerin zirvesinde '${topK}' problemi var. Danışmanların kredi faiz oranları, vade seçenekleri ve takas destekleri konusunda daha proaktif olmaları satış kapatma oranını doğrudan artıracaktır.`;
-            } else if(topKLower.includes("ulaş") || topKLower.includes("cevap") || topKLower.includes("dönüş")) {
-                text = `💡 Stratejik Öneri: '${topK}' problemi dikkat çekiyor. İlk temas stratejinizi değiştirin: Arama saatlerini optimize edin veya aramadan önce WhatsApp üzerinden sıcak bir karşılama/randevu mesajı atmayı deneyin.`;
-            } else if(topKLower.includes("rakip") || topKLower.includes("başka")) {
-                 text = `💡 Stratejik Öneri: Müşteriler '${topK}' nedeniyle kaybediliyor. Modellerinizin rakip markalara göre avantajlarını (donanım, servis, garanti süresi) vurgulayan bir "Karşılaştırma Tablosu" hazırlayıp danışmanların elinin altında bulundurun.`;
-            } else {
-                text = `💡 Stratejik Öneri: Müşteri kayıplarında ağırlıklı olarak '${topK}' nedeni saptanmıştır. Ekibin bu spesifik itirazı rahatça karşılayabilmesi için kısa bir iç eğitim veya role-play toplantısı organize etmeniz tavsiye edilir.`;
-            }
-            typeWriter("ai-response", text);
+            let topK = Object.keys(kCounts).sort((a,b)=>kCounts[b]-kCounts[a])[0]; // En çok kaybedilen neden
+            
+            // Gemini'a göndereceğimiz özel komut (Prompt)
+            let prompt = `Sen profesyonel bir otomotiv satış stratejistisin. Ekibimiz en çok "${topK}" nedeni yüzünden müşteri kaybediyor. Satış ekibine bu spesifik itirazı kırmak ve satışa döndürmek için uygulanabilir, vizyoner ve vurucu tek bir stratejik taktik ver. Maksimum 3 cümle olsun.`;
+            
+            callGemini(prompt, "ai-response");
         }
 
         // --- VERİ İŞLEME VE FİLTRELER ---
@@ -470,14 +499,38 @@
             const container = document.getElementById("list-tarih"); container.onclick = (e) => e.stopPropagation(); container.innerHTML = "";
             let hierarchy = {}; cleanData.forEach(d => { let y = d._Year; let m = d._Month; let idx = d._MonthIdx; if(!hierarchy[y]) hierarchy[y] = []; if(!hierarchy[y].find(x => x.name === m)) hierarchy[y].push({ name: m, idx: idx }); });
             const allDiv = document.createElement("div"); allDiv.innerHTML = `<label class="select-all-label"><input type="checkbox" id="all-date-check" checked> (Tüm Tarihler)</label>`; container.appendChild(allDiv);
+            
             Object.keys(hierarchy).sort().reverse().forEach(year => {
                 const yearWrap = document.createElement("div"); const row = document.createElement("div"); row.className = "tree-year-row"; row.innerHTML = `<i class="fas fa-chevron-right tree-toggle"></i> <input type="checkbox" class="tree-year-check" value="${year}" checked> <span>${year}</span>`;
                 row.querySelector(".tree-toggle").onclick = function(e) { e.stopPropagation(); yearWrap.classList.toggle("tree-active"); };
                 const yearCheck = row.querySelector(".tree-year-check"); const monthsContainer = document.createElement("div"); monthsContainer.className = "tree-month-container";
-                hierarchy[year].sort((a,b) => a.idx - b.idx).forEach(mObj => { const mRow = document.createElement("div"); mRow.className = "tree-month-row"; mRow.innerHTML = `<input type="checkbox" class="tree-month-check" data-year="${year}" value="${mObj.name}" checked> ${mObj.name}`; monthsContainer.appendChild(mRow); });
+                
+                hierarchy[year].sort((a,b) => a.idx - b.idx).forEach(mObj => { 
+                    const mRow = document.createElement("div"); mRow.className = "tree-month-row"; 
+                    mRow.innerHTML = `<input type="checkbox" class="tree-month-check" data-year="${year}" value="${mObj.name}" checked> ${mObj.name}`; 
+                    monthsContainer.appendChild(mRow); 
+                });
+                
                 yearWrap.appendChild(row); yearWrap.appendChild(monthsContainer); container.appendChild(yearWrap);
-                yearCheck.onchange = function() { monthsContainer.querySelectorAll(".tree-month-check").forEach(s => s.checked = yearCheck.checked); updateDash(); };
+                
+                // 1. Yıla tıklanınca altındaki tüm ayları seç/bırak ve grafiği güncelle
+                yearCheck.onchange = function() { 
+                    monthsContainer.querySelectorAll(".tree-month-check").forEach(s => s.checked = yearCheck.checked); 
+                    updateDash(); 
+                };
+                
+                // 2. AYLARA TIKLANDIĞINDA GRAFİĞİ GÜNCELLEME KODU (Senin istediğin düzeltme burasıydı!)
+                monthsContainer.querySelectorAll(".tree-month-check").forEach(mCheck => {
+                    mCheck.onchange = function() { 
+                        // Eğer bir ayın tikini kaldırırsak, üstteki 'Yıl' tikini de otomatik kaldır
+                        const allMonthsChecked = Array.from(monthsContainer.querySelectorAll(".tree-month-check")).every(c => c.checked);
+                        yearCheck.checked = allMonthsChecked;
+                        
+                        updateDash(); // Grafikleri anında güncelle!
+                    };
+                });
             });
+            
             document.getElementById("all-date-check").onclick = function(e) { e.stopPropagation(); const state = this.checked; container.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = state); updateDash(); };
         }
         function getSelected(listId) { return Array.from(document.querySelectorAll(`.item-check-${listId}:checked`)).map(i => i.value); }
@@ -648,8 +701,25 @@
 
         // --- AYARLAR ---
         let activeCategory = "Model";
-        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; setCategory(activeCategory); }
-        function saveAndCloseSettings() { localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); document.getElementById('settings-modal').style.display='none'; if(document.getElementById('dashboard-page').style.display==='block') { processData(); initFilters(); updateDash(); } }
+        
+        // AYARLAR AÇILIRKEN API ANAHTARINI GETİR (GÜNCELLENDİ)
+        function openSettings() { 
+            document.getElementById('settings-modal').style.display = 'flex'; 
+            setCategory(activeCategory); 
+            document.getElementById('gemini-api-key').value = localStorage.getItem('geminiApiKey') || "";
+        }
+        
+        // AYARLAR KAYDEDİLİRKEN API ANAHTARINI KAYDET (GÜNCELLENDİ)
+        function saveAndCloseSettings() { 
+            localStorage.setItem('geminiApiKey', document.getElementById('gemini-api-key').value.trim());
+            localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); 
+            localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); 
+            document.getElementById('settings-modal').style.display='none'; 
+            if(document.getElementById('dashboard-page').style.display==='block') { 
+                processData(); initFilters(); updateDash(); 
+            } 
+        }
+        
         function discardAndCloseSettings() { globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')); hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')); document.getElementById('settings-modal').style.display='none'; }
         
         function setCategory(cat) { activeCategory = cat; renderSettingsLists(); document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active')); event.target.classList.add('active'); }
