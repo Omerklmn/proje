@@ -752,12 +752,45 @@
                 });
             }
         }
+        // --- GÜNCELLENMİŞ SİMÜLASYON KARTLARI (Kutusuz ve Yerel Resimli Tasarım) ---
         function renderSimGrid(id, col, cb) {
-            const c = document.getElementById(id); c.innerHTML="";
+            const c = document.getElementById(id); 
+            c.innerHTML = "";
             const items = [...new Set(cleanData.map(d=>d[col]))].sort();
+            
             items.forEach(i => {
-                let d = document.createElement('div'); d.className='selection-card';
-                d.innerHTML=`<i class="fas fa-check-circle"></i><b>${i}</b>`; d.onclick=()=>cb(i);
+                let d = document.createElement('div'); 
+                
+                if(col === 'Model') {
+                    // MODELLER İÇİN ÖZEL KUTUSUZ TASARIM
+                    d.style.display = "flex";
+                    d.style.flexDirection = "column";
+                    d.style.alignItems = "center";
+                    d.style.cursor = "pointer";
+                    d.style.padding = "10px";
+                    d.style.transition = "transform 0.2s ease"; // Hafif animasyon
+                    
+                    // Doğrudan verideki isimle PNG çağırıyoruz (Örn: "Corolla.png")
+                    let imgSrc = i + ".png";
+
+                    // Yazı üstte, araba resmi altta (Kutu yok, sadece gölgeli araba)
+                    // onerror kısmı: klasörde o resim yoksa standart araba ikonu gösterir
+                    d.innerHTML = `
+                        <b style="margin-bottom: 10px; font-size: 16px; color: #00d4ff; text-shadow: 0 2px 4px rgba(0,0,0,0.8); text-align: center;">${i}</b>
+                        <img src="${imgSrc}" style="width: 140px; height: 80px; object-fit: contain; filter: drop-shadow(0px 8px 10px rgba(0,0,0,0.6));" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3204/3204003.png'">
+                    `;
+                    
+                    // Üzerine gelince büyüme efekti (Şık Showroom hissiyatı)
+                    d.onmouseover = () => d.style.transform = "scale(1.15)";
+                    d.onmouseout = () => d.style.transform = "scale(1)";
+                    
+                } else {
+                    // DANIŞMAN VE AY GİBİ DİĞER ADIMLAR İÇİN STANDART KUTULU TASARIM
+                    d.className = 'selection-card';
+                    d.innerHTML = `<i class="fas fa-check-circle" style="font-size: 24px; margin-bottom: 10px; color: #00d4ff;"></i><b style="text-align: center;">${i}</b>`;
+                }
+
+                d.onclick = () => cb(i);
                 c.appendChild(d);
             });
         }
