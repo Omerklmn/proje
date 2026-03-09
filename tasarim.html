@@ -597,6 +597,25 @@
             return { y: d.getFullYear().toString(), m: monthNames[d.getMonth()], idx: d.getMonth() };
         }
 
+        // --- YÜKLEME (GEÇİŞ) EFEKTİ FONKSİYONU ---
+        function showLoading(callback) {
+            const loader = document.getElementById('loading-screen');
+            const fillImg = document.getElementById('loading-fill-img');
+            
+            loader.style.display = 'flex'; // Siyah ekranı aç
+            fillImg.style.clipPath = 'inset(100% 0 0 0)'; // Resmi boşalt
+            
+            // 50ms sonra dolma animasyonunu tetikle
+            setTimeout(() => {
+                fillImg.style.clipPath = 'inset(0 0 0 0)'; // Resmi aşağıdan yukarı doldur
+            }, 50);
+
+            // 1 saniye sonra hedef sayfaya geçiş yap ve yükleme ekranını kapat
+            setTimeout(() => {
+                loader.style.display = 'none';
+                callback();
+            }, 1050); 
+        }
         // --- SAYFA AÇILIŞLARI (GÜNCELLENDİ) ---
         function openDashboard() {
             if(rawData.length === 0) { alert("Veri yok!"); return; }
