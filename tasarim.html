@@ -448,9 +448,32 @@
         function aiOzelSoru() {
             let soru = document.getElementById("ai-custom-prompt").value.trim();
             if(!soru) return;
+            
             let nTot = currentFilteredData.length;
             let nSat = currentFilteredData.filter(d=>d.Durum==="Satış").length;
-            let prompt = `Sen bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun (Hitabın Aykut Bey olsun). Toplam ${nTot} görüşme ve %${(nSat/nTot*100).toFixed(1)} satış var. Aykut Bey'in sorusu şu: "${soru}". Lütfen doğrudan, kısa ve net bir cevap ver.`;
+            
+            // --- YAPAY ZEKAYA GÖZ TAKIYORUZ (VERİ ÖZETİ ÇIKARMA) ---
+            // Modellerin, danışmanların ve kayıp nedenlerinin sayısını hesaplıyoruz
+            let mCounts = count(currentFilteredData, "Model");
+            let kCounts = count(currentFilteredData.filter(d=>d.Durum!=="Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni");
+            let cCounts = count(currentFilteredData, "Danışman Adı");
+            
+            // Bu sayıları yapay zekanın anlayacağı metne (JSON) çeviriyoruz
+            let modelOzet = JSON.stringify(mCounts);
+            let kayipOzet = JSON.stringify(kCounts);
+            let danismanOzet = JSON.stringify(cCounts);
+
+            // --- YENİ VE AKILLI KOMUTUMUZ ---
+            let prompt = `Sen profesyonel bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun (Hitabın hep Aykut Bey olsun). 
+            Şu an ekranda seçili olan filtrelerin detaylı veri özeti şudur:
+            - Toplam Görüşme: ${nTot}, Toplam Satış: ${nSat}
+            - Danışmanların Görüşme Sayıları: ${danismanOzet}
+            - Modellerin Görüşme Sayıları: ${modelOzet}
+            - Satış İptallerindeki Kayıp Nedenleri ve Sayıları: ${kayipOzet}
+
+            Aykut Bey'in sana özel sorusu şu: "${soru}". 
+            Lütfen sadece sana verdiğim bu veri özetine bakarak doğrudan, analitik ve net bir cevap ver.`;
+
             callGemini(prompt, "ai-response");
             document.getElementById("ai-custom-prompt").value = ""; // Kutuyu temizle
         }
