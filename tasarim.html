@@ -425,23 +425,66 @@
             }
         }
 
-        function aiYorumla() {
-            if(!currentFilteredData || currentFilteredData.length === 0) return typeWriter("ai-response", "Analiz edilecek veri bulunamadı.");
+        // --- DERİNLEMESİNE VERİ ÖZETİ ÇIKARICI (YAPAY ZEKANIN YENİ GÖZÜ) ---
+        function getVeriOzeti() {
+            if(!currentFilteredData || currentFilteredData.length === 0) return "Veri yok.";
             let nTot = currentFilteredData.length;
             let nSat = currentFilteredData.filter(d=>d.Durum==="Satış").length;
-            let rate = nTot > 0 ? (nSat/nTot*100).toFixed(1) : 0;
             
-            let prompt = `Sen uzman bir otomotiv satış yöneticisisin. Karşında yöneticin Aykut Bey var, ona her zaman saygıyla 'Aykut Bey' diye hitap et. Şu anki filtrelere göre: Toplam ${nTot} müşteri görüşmesi yapıldı ve bunların %${rate}'si satışa dönüştü. Lütfen Aykut Bey'e bu durumu maksimum 3 cümleyle profesyonelce yorumla.`;
+            let modelStats = {};
+            let danismanStats = {};
+            let kayipStats = {};
+
+            currentFilteredData.forEach(d => {
+                let m = d["Model"] || "Bilinmiyor";
+                let c = d["Danışman Adı"] || "Bilinmiyor";
+                let k = d["Kayıp Nedeni"];
+                let isSold = d["Durum"] === "Satış";
+
+                // Model bazlı görüşme ve satış sayımı
+                if(!modelStats[m]) modelStats[m] = { gorusme: 0, satis: 0 };
+                modelStats[m].gorusme++;
+                if(isSold) modelStats[m].satis++;
+
+                // Danışman bazlı görüşme ve satış sayımı
+                if(!danismanStats[c]) danismanStats[c] = { gorusme: 0, satis: 0 };
+                danismanStats[c].gorusme++;
+                if(isSold) danismanStats[c].satis++;
+
+                // Kayıp nedeni sayımı
+                if(!isSold && k && k !== "Belirtilmemiş") {
+                    if(!kayipStats[k]) kayipStats[k] = 0;
+                    kayipStats[k]++;
+                }
+            });
+
+            return JSON.stringify({
+                "Genel Ozet": { "Toplam Gorusme": nTot, "Toplam Satis": nSat },
+                "Danismanlarin Satis Durumu": danismanStats,
+                "Modellerin Satis Durumu": modelStats,
+                "Musteri Kayip Nedenleri": kayipStats
+            });
+        }
+
+        function aiYorumla() {
+            let ozet = getVeriOzeti();
+            if(ozet === "Veri yok.") return typeWriter("ai-response", "Analiz edilecek veri bulunamadı.");
+            
+            let prompt = `Sen uzman bir otomotiv satış yöneticisisin. Karşında yöneticin Aykut Bey var, ona her zaman saygıyla 'Aykut Bey' diye hitap et. 
+            Şu anki filtrelenmiş verilerin detaylı matematiksel özeti şudur: ${ozet}
+            Lütfen Aykut Bey'e bu durumu maksimum 3 cümleyle profesyonelce yorumla. (Gerekirse görüşme/satış oranlarından başarı yüzdesini hesapla).`;
+            
             callGemini(prompt, "ai-response");
         }
 
         function aiOneriVer() {
-            if(!currentFilteredData || currentFilteredData.length === 0) return typeWriter("ai-response", "Veri yok, öneri üretilemiyor.");
-            let kayip = currentFilteredData.filter(d=>d.Durum!=="Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş");
-            if(kayip.length === 0) return typeWriter("ai-response", "💡 Kayıp verisi yok, oranlar mükemmel!");
-            let topK = Object.keys(count(kayip, "Kayıp Nedeni")).sort((a,b)=>count(kayip, "Kayıp Nedeni")[b]-count(kayip, "Kayıp Nedeni")[a])[0]; 
+            let ozet = getVeriOzeti();
+            if(ozet === "Veri yok.") return typeWriter("ai-response", "Veri yok, öneri üretilemiyor.");
             
-            let prompt = `Sen profesyonel bir satış stratejistisin. Yöneticin Aykut Bey'e hitap ederek yaz (Bana Aykut Bey de). Ekibimiz en çok "${topK}" nedeni yüzünden müşteri kaybediyor. Satış ekibine bu itirazı kırmak için uygulanabilir tek bir taktik ver. Maksimum 3 cümle olsun.`;
+            let prompt = `Sen profesyonel bir satış stratejistisin. Yöneticin Aykut Bey'e hitap ederek yaz. 
+            Şu anki detaylı veri özeti: ${ozet}
+            Bu verilere (özellikle kayıp nedenlerine ve satış oranlarına) bakarak Aykut Bey'e durumu toparlaması veya daha da iyileştirmesi için çok stratejik, nokta atışı tek bir taktik ver. Maksimum 3 cümle olsun.`;
+            
             callGemini(prompt, "ai-response");
         }
 
@@ -449,33 +492,41 @@
             let soru = document.getElementById("ai-custom-prompt").value.trim();
             if(!soru) return;
             
-            let nTot = currentFilteredData.length;
-            let nSat = currentFilteredData.filter(d=>d.Durum==="Satış").length;
+            let ozet = getVeriOzeti();
             
-            // --- YAPAY ZEKAYA GÖZ TAKIYORUZ (VERİ ÖZETİ ÇIKARMA) ---
-            // Modellerin, danışmanların ve kayıp nedenlerinin sayısını hesaplıyoruz
-            let mCounts = count(currentFilteredData, "Model");
-            let kCounts = count(currentFilteredData.filter(d=>d.Durum!=="Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni");
-            let cCounts = count(currentFilteredData, "Danışman Adı");
-            
-            // Bu sayıları yapay zekanın anlayacağı metne (JSON) çeviriyoruz
-            let modelOzet = JSON.stringify(mCounts);
-            let kayipOzet = JSON.stringify(kCounts);
-            let danismanOzet = JSON.stringify(cCounts);
-
-            // --- YENİ VE AKILLI KOMUTUMUZ ---
-            let prompt = `Sen profesyonel bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun (Hitabın hep Aykut Bey olsun). 
-            Şu an ekranda seçili olan filtrelerin detaylı veri özeti şudur:
-            - Toplam Görüşme: ${nTot}, Toplam Satış: ${nSat}
-            - Danışmanların Görüşme Sayıları: ${danismanOzet}
-            - Modellerin Görüşme Sayıları: ${modelOzet}
-            - Satış İptallerindeki Kayıp Nedenleri ve Sayıları: ${kayipOzet}
+            let prompt = `Sen profesyonel bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun (Hitabın Aykut Bey olsun). 
+            Şu an Aykut Bey'in ekranda gördüğü filtrelenmiş verilerin tüm röntgeni şu şekildedir:
+            ${ozet}
 
             Aykut Bey'in sana özel sorusu şu: "${soru}". 
-            Lütfen sadece sana verdiğim bu veri özetine bakarak doğrudan, analitik ve net bir cevap ver.`;
+            Lütfen sadece sana verdiğim bu veri özetine bakarak, gerekirse başarı yüzdelerini (Satış/Görüşme) kendin hesaplayarak çok net, analitik ve doğru bir cevap ver. Sadece sorulana odaklan.`;
 
             callGemini(prompt, "ai-response");
             document.getElementById("ai-custom-prompt").value = ""; // Kutuyu temizle
+        }
+
+        // --- SİMÜLASYON YAPAY ZEKA FONKSİYONLARI ---
+        function getSimContext() {
+            let c = document.getElementById('wi-cons').value;
+            let m = document.getElementById('wi-model').value;
+            let mo = document.getElementById('wi-month').value;
+            let final = document.getElementById('result-score').innerText;
+            return `Danışman: ${c}, Model: ${m}, Ay: ${mo}. Sistemin hesapladığı Başarı İhtimali: ${final}.`;
+        }
+
+        function aiSimYorumla() {
+            let context = getSimContext();
+            let prompt = `Sen bir otomotiv satış asistanısın. Yöneticin Aykut Bey sana simülasyon verileri veriyor. Mutlaka 'Aykut Bey' diye hitap et. Senaryo: ${context} Bu senaryonun güçlü ve zayıf yanını 2-3 cümleyle Aykut Bey'e özetle.`;
+            callGemini(prompt, "sim-ai-response");
+        }
+
+        function aiSimOzelSoru() {
+            let soru = document.getElementById("sim-custom-prompt").value.trim();
+            if(!soru) return;
+            let context = getSimContext();
+            let prompt = `Sen bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun. Simülasyon Senaryosu: ${context}. Aykut Bey'in sorusu: "${soru}". Buna profesyonel, kısa ve akılcı bir cevap ver. Aykut Bey diye hitap etmeyi unutma.`;
+            callGemini(prompt, "sim-ai-response");
+            document.getElementById("sim-custom-prompt").value = "";
         }
 
         function getSimContext() {
