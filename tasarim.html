@@ -288,10 +288,10 @@
                         <div class="control-group"><label>Ay</label><select id="wi-month" class="control-select" onchange="recalculateSim()"></select></div>
                     </div>
                     <div class="slider-row">
-                        <div class="slider-group"><label>Danışman Etkisi</label><input type="range" id="w-cons" class="weight-slider" value="50" oninput="recalculateSim()"></div>
-                        <div class="slider-group"><label>Model Etkisi</label><input type="range" id="w-model" class="weight-slider" value="30" oninput="recalculateSim()"></div>
-                        <div class="slider-group"><label>Zaman Etkisi</label><input type="range" id="w-month" class="weight-slider" value="20" oninput="recalculateSim()"></div>
-                    </div>
+    <div class="slider-group"><label>Danışman Etkisi <span id="val-cons" style="color:#00d4ff; font-weight:bold;">%50</span></label><input type="range" id="w-cons" class="weight-slider" value="50" oninput="recalculateSim()"></div>
+    <div class="slider-group"><label>Model Etkisi <span id="val-model" style="color:#00d4ff; font-weight:bold;">%30</span></label><input type="range" id="w-model" class="weight-slider" value="30" oninput="recalculateSim()"></div>
+    <div class="slider-group"><label>Zaman Etkisi <span id="val-month" style="color:#00d4ff; font-weight:bold;">%20</span></label><input type="range" id="w-month" class="weight-slider" value="20" oninput="recalculateSim()"></div>
+</div>
                 </div>
                 <div id="ai-suggestion" style="margin-top:20px; color:#f39c12; text-align:center; font-style:italic;"></div>
                 <button class="btn-back" onclick="resetSim()" style="margin-top:20px; background:#34495e;">Yeni Simülasyon</button>
@@ -609,6 +609,11 @@
             const wC = parseInt(document.getElementById('w-cons').value);
             const wM = parseInt(document.getElementById('w-model').value);
             const wT = parseInt(document.getElementById('w-month').value);
+            
+            // EKRANA YÜZDELERİ YAZDIRMA KODU (BURAYI EKLİYORUZ 👇)
+            document.getElementById('val-cons').innerText = "%" + wC;
+            document.getElementById('val-model').innerText = "%" + wM;
+            document.getElementById('val-month').innerText = "%" + wT;
 
             // Gerçek Excel verisinden başarı oranını hesaplayan zeka
             const getR = (col, val) => {
