@@ -32,7 +32,7 @@
         .flip-card-back img { width: 85%; height: 85%; object-fit: contain; }
 
         /* DASHBOARD */
-        #dashboard-page, #simulation-page { display: none; padding: 20px; background-color: #0e1117; min-height: 100vh; }
+        #dashboard-page, #simulation-page, #pareto-page { display: none; padding: 20px; background-color: #0e1117; min-height: 100vh; }
         .dash-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00d4ff; padding-bottom: 10px; margin-bottom: 20px; }
         
         /* FİLTRELER */
@@ -85,6 +85,10 @@
         .slider-row { display: flex; gap: 30px; justify-content: center; margin-top: 20px; }
         .slider-group { width: 200px; text-align: center; }
         .weight-slider { width: 100%; accent-color: #00d4ff; }
+
+        /* PARETO ANALİZİ TASARIMLARI */
+        .insight-box { border-left: 5px solid #f39c12; background: rgba(243, 156, 18, 0.1); padding: 20px; border-radius: 0 8px 8px 0; margin-top: 20px; font-size: 15px; line-height: 1.6; color: #ddd; }
+        .insight-highlight { color: #f39c12; font-weight: bold; font-size: 16px; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -187,13 +191,19 @@
             <div class="flip-card" onclick="openDashboard()">
                 <div class="flip-card-inner">
                     <div class="flip-card-front"><h2>GRAFİKLER</h2></div>
-                    <div class="flip-card-back"><img src="[[GRAFIK_SRC]]"></div>
+                    <div class="flip-card-back"><img src="[[GRAFIK_SRC]]" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3093/3093359.png'"></div>
                 </div>
             </div>
             <div class="flip-card" onclick="openSimulation()">
                 <div class="flip-card-inner">
                     <div class="flip-card-front"><h2>SATIŞ<br>SİMÜLASYONU</h2></div>
-                    <div class="flip-card-back"><img src="[[SIM_SRC]]"></div>
+                    <div class="flip-card-back"><img src="[[SIM_SRC]]" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1006/1006363.png'"></div>
+                </div>
+            </div>
+            <div class="flip-card" onclick="openPareto()">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front"><h2>DARBOĞAZ<br>ANALİZİ</h2></div>
+                    <div class="flip-card-back"><img src="[[PARETO_SRC]]" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2822/2822127.png'"></div>
                 </div>
             </div>
         </div>
@@ -268,6 +278,28 @@
             <div class="chart-box" id="c-kayip"></div>
             <div class="chart-box" id="c-lead"></div>
         </div>
+    </div>
+
+    <div id="pareto-page">
+        <div class="dash-header">
+            <button class="btn-back" onclick="openHome()">← ANA MENÜ</button>
+            <h2 style="color:#f39c12; margin:0;"><i class="fas fa-filter"></i> 80/20 Darboğaz (Pareto) Analizi</h2>
+            <div></div>
+        </div>
+        
+        <div style="background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <label style="color:#aaa; font-weight:bold; font-size: 14px;">Analiz Boyutu Seçin:</label>
+            <select id="pareto-dimension" onchange="renderPareto()" style="background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px; outline: none; flex: 1; max-width: 400px; font-size: 14px;">
+                <option value="Kayıp Nedeni">Kayıp Nedenleri (Kayıplar en çok nedenden yaşanıyor?)</option>
+                <option value="Lead Kaynağı">Lead Kaynağı (Kayıplar en çok hangi kanaldan geliyor?)</option>
+                <option value="Model">Model (En çok hangi modelde satış kaçırıyoruz?)</option>
+                <option value="Danışman Adı">Danışman (Kayıpların sayısal yükü kimin üzerinde?)</option>
+            </select>
+        </div>
+
+        <div id="pareto-chart" style="width:100%; height:450px; background:#1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 10px;"></div>
+        
+        <div id="pareto-insight" class="insight-box"></div>
     </div>
 
     <div id="simulation-page">
@@ -536,29 +568,6 @@
             document.getElementById("sim-custom-prompt").value = "";
         }
 
-        function getSimContext() {
-            let c = document.getElementById('wi-cons').value;
-            let m = document.getElementById('wi-model').value;
-            let mo = document.getElementById('wi-month').value;
-            let final = document.getElementById('result-score').innerText;
-            return `Danışman: ${c}, Model: ${m}, Ay: ${mo}. Sistemin hesapladığı Başarı İhtimali: ${final}.`;
-        }
-
-        function aiSimYorumla() {
-            let context = getSimContext();
-            let prompt = `Sen bir otomotiv satış danışmanısın. Yöneticin Aykut Bey sana simülasyon verileri veriyor. Mutlaka 'Aykut Bey' diye hitap et. Senaryo: ${context} Bu senaryonun güçlü ve zayıf yanını 2-3 cümleyle Aykut Bey'e özetle.`;
-            callGemini(prompt, "sim-ai-response");
-        }
-
-        function aiSimOzelSoru() {
-            let soru = document.getElementById("sim-custom-prompt").value.trim();
-            if(!soru) return;
-            let context = getSimContext();
-            let prompt = `Sen bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun. Simülasyon Senaryosu: ${context}. Aykut Bey'in sorusu: "${soru}". Buna profesyonel, kısa ve akılcı bir cevap ver. Aykut Bey diye hitap etmeyi unutma.`;
-            callGemini(prompt, "sim-ai-response");
-            document.getElementById("sim-custom-prompt").value = "";
-        }
-
         // --- VERİ İŞLEME VE FİLTRELER ---
         function processData() {
             const availableModels = new Set(rawData.map(d => d["Model"]));
@@ -616,12 +625,14 @@
                 callback();
             }, 1050); 
         }
-        // --- SAYFA AÇILIŞLARI (GÜNCELLENDİ) ---
+
+        // --- SAYFA AÇILIŞLARI ---
         function openDashboard() {
             if(rawData.length === 0) { alert("Veri yok!"); return; }
             showLoading(() => {
                 document.getElementById('home-page').style.display = 'none';
                 document.getElementById('simulation-page').style.display = 'none';
+                document.getElementById('pareto-page').style.display = 'none';
                 document.getElementById('dashboard-page').style.display = 'block';
                 processData();
                 initFilters();
@@ -629,6 +640,133 @@
             });
         }
 
+        function openSimulation() {
+            if(rawData.length===0) return;
+            processData(); 
+            if(cleanData.length === 0) { alert("Veri yok veya hepsi gizlenmiş!"); return; }
+            showLoading(() => {
+                document.getElementById('home-page').style.display = 'none';
+                document.getElementById('dashboard-page').style.display = 'none';
+                document.getElementById('pareto-page').style.display = 'none';
+                document.getElementById('simulation-page').style.display = 'block';
+                goToStep(1);
+            });
+        }
+        
+        // --- PARETO ANALİZİ MOTORU ---
+        function openPareto() {
+            if(rawData.length === 0) { alert("Veri yok!"); return; }
+            processData(); // Verilerin gruplanmış halini (cleanData) kullanacağız
+            showLoading(() => {
+                document.getElementById('home-page').style.display = 'none';
+                document.getElementById('dashboard-page').style.display = 'none';
+                document.getElementById('simulation-page').style.display = 'none';
+                document.getElementById('pareto-page').style.display = 'block';
+                renderPareto();
+            });
+        }
+
+        function renderPareto() {
+            const dimension = document.getElementById('pareto-dimension').value;
+            
+            // 1. ADIM: Sadece "Kayıp" olan verileri (ayarlardaki gizlemelere/gruplara göre temizlenmiş) filtrele
+            const lossData = cleanData.filter(row => row['Durum'] === 'Kayıp');
+            
+            if (lossData.length === 0) {
+                document.getElementById('pareto-chart').innerHTML = "<h3 style='color:#888; text-align:center; padding-top:180px;'>Yeterli kayıp verisi bulunamadı.</h3>";
+                document.getElementById('pareto-insight').innerHTML = "";
+                return;
+            }
+
+            // 2. ADIM: Frekansları hesapla
+            const counts = {};
+            lossData.forEach(row => {
+                const val = row[dimension] || "Belirtilmemiş";
+                counts[val] = (counts[val] || 0) + 1;
+            });
+
+            // 3. ADIM: Büyükten küçüğe sırala
+            const sortedItems = Object.keys(counts).map(k => ({ name: k, count: counts[k] })).sort((a, b) => b.count - a.count);
+
+            // 4. ADIM: Kümülatif Yüzde ve %80 Sınırını Hesapla
+            const totalLoss = lossData.length;
+            let cumulative = 0;
+            const xValues = [];
+            const yBars = [];
+            const yLines = [];
+            
+            const pareto80Items = []; // Darboğazı oluşturan suçlular
+            let thresholdCrossed = false;
+
+            sortedItems.forEach(item => {
+                xValues.push(item.name);
+                yBars.push(item.count);
+                
+                cumulative += item.count;
+                const cumPercent = (cumulative / totalLoss) * 100;
+                yLines.push(cumPercent);
+                
+                // %80 veya ona en yakın ilk noktaları tespit et
+                if (!thresholdCrossed) {
+                    pareto80Items.push(item.name);
+                    if (cumPercent >= 80) thresholdCrossed = true;
+                }
+            });
+
+            // 5. ADIM: Plotly.js ile Çift Eksenli (Dual-Axis) Çizim
+            const traceBar = {
+                x: xValues, y: yBars, type: 'bar', name: 'Kayıp Adedi',
+                marker: { color: '#e74c3c' }
+            };
+
+            const traceLine = {
+                x: xValues, y: yLines, type: 'scatter', mode: 'lines+markers',
+                name: 'Kümülatif %', yaxis: 'y2',
+                line: { color: '#f39c12', width: 3 }, marker: { size: 8 }
+            };
+
+            const layout = {
+                title: { text: `Toplam ${totalLoss} Kaybın "${dimension}" Bazlı Analizi`, font: { color: '#fff', size: 16 } },
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#ddd' },
+                xaxis: { tickangle: -25 },
+                yaxis: { title: 'Kayıp Adedi', gridcolor: '#333' },
+                yaxis2: { title: 'Kümülatif Yüzde (%)', overlaying: 'y', side: 'right', range: [0, 105], gridcolor: 'transparent' },
+                showlegend: false,
+                margin: { b: 80, t: 60, l: 50, r: 50 }
+            };
+
+            // Önceki çizimi temizle ve yenisini çiz
+            document.getElementById('pareto-chart').innerHTML = "";
+            Plotly.newPlot('pareto-chart', [traceBar, traceLine], layout, {responsive: true});
+
+            // 6. ADIM: Yöneticinin İnisiyatifine Bırakan Teşhis Raporu
+            const totalCategories = sortedItems.length;
+            const bottleneckCount = pareto80Items.length;
+            const bottleneckPercent = (yLines[bottleneckCount - 1]).toFixed(1);
+            
+            let insightHTML = `<h3 style="margin-top:0;"><i class="fas fa-crosshairs insight-highlight"></i> Sistem Teşhisi ve Yönlendirme</h3>`;
+            insightHTML += `Sistemdeki toplam <b>${totalLoss}</b> adet satış kaybı incelendiğinde; <b>${totalCategories}</b> farklı alt kategori olduğu görülmektedir.<br><br>`;
+            insightHTML += `Ancak Pareto kuralına (Kısıtlar Teorisi) göre, kayıplarınızın <span class="insight-highlight">%${bottleneckPercent}</span>'lik devasa bir kısmı sadece şu <b>${bottleneckCount}</b> ana etkende yoğunlaşmıştır:<br>`;
+            
+            insightHTML += `<ul style="margin:10px 0; color:#fff;">` + pareto80Items.map(i => `<li><b>${i}</b></li>`).join('') + `</ul>`;
+            
+            // DİKKAT: Çözüm yok, sadece odak noktası var!
+            insightHTML += `<i><b>Yönetici Aksiyon Önerisi:</b> Diğer ${totalCategories - bottleneckCount} tali nedene zaman harcamak yerine, şirketin operasyonel iyileştirme eforunun öncelikli olarak bu <b>${bottleneckCount}</b> ana darboğazın kök nedenlerini araştırmaya yönlendirilmesi önerilmektedir.</i>`;
+
+            document.getElementById('pareto-insight').innerHTML = insightHTML;
+        }
+
+        function openHome() { 
+            showLoading(() => {
+                document.getElementById('simulation-page').style.display='none'; 
+                document.getElementById('dashboard-page').style.display='none'; 
+                document.getElementById('pareto-page').style.display='none'; 
+                document.getElementById('home-page').style.display='flex'; 
+            });
+        }
+
+        // --- YARDIMCI FONKSİYONLAR ---
         function initFilters() {
             if(cleanData.length === 0) return;
             setupChecklist("list-danisman", [...new Set(cleanData.map(d => d["Danışman Adı"]))].sort(), "btn-danisman");
@@ -662,20 +800,16 @@
                 
                 yearWrap.appendChild(row); yearWrap.appendChild(monthsContainer); container.appendChild(yearWrap);
                 
-                // 1. Yıla tıklanınca altındaki tüm ayları seç/bırak ve grafiği güncelle
                 yearCheck.onchange = function() { 
                     monthsContainer.querySelectorAll(".tree-month-check").forEach(s => s.checked = yearCheck.checked); 
                     updateDash(); 
                 };
                 
-                // 2. AYLARA TIKLANDIĞINDA GRAFİĞİ GÜNCELLEME KODU
                 monthsContainer.querySelectorAll(".tree-month-check").forEach(mCheck => {
                     mCheck.onchange = function() { 
-                        // Eğer bir ayın tikini kaldırırsak, üstteki 'Yıl' tikini de otomatik kaldır
                         const allMonthsChecked = Array.from(monthsContainer.querySelectorAll(".tree-month-check")).every(c => c.checked);
                         yearCheck.checked = allMonthsChecked;
-                        
-                        updateDash(); // Grafikleri anında güncelle!
+                        updateDash(); 
                     };
                 });
             });
@@ -701,14 +835,12 @@
             
             const filtered = cleanData.filter(d => selDanisman.includes(d["Danışman Adı"]) && selModel.includes(d["Model"]) && selDatePairs.includes(d["_Year"] + "-" + d["_Month"]));
             
-            // Global filtre datasını güncelle (Yapay zeka için)
             currentFilteredData = filtered;
 
             document.getElementById("k-top").innerText = filtered.length;
             const nSat = filtered.filter(d => d["Durum"] === "Satış").length;
             document.getElementById("k-sat").innerText = nSat;
             
-            // TREND OKLARI HESAPLAMASI
             let overallTotal = cleanData.length;
             let overallSat = cleanData.filter(d => d.Durum === "Satış").length;
             let overallRate = overallTotal > 0 ? (overallSat / overallTotal * 100) : 0;
@@ -724,8 +856,6 @@
             document.getElementById("k-ora").innerHTML = "%" + curRate.toFixed(1) + arrowHtml;
 
             renderCharts(filtered);
-            
-            // Filtre değiştiğinde AI yanıtını sıfırla
             document.getElementById("ai-response").innerHTML = "Filtreler güncellendi. Yeni analiz için yukarıdaki butonları kullanabilirsiniz...";
         }
 
@@ -758,19 +888,6 @@
         }
         function count(data, key) { const c = {}; data.forEach(d => c[d[key]] = (c[d[key]] || 0) + 1); return c; }
 
-        // --- SİMÜLASYON ---
-        let simSelections = {};
-        function openSimulation() {
-            if(rawData.length===0) return;
-            processData(); 
-            if(cleanData.length === 0) { alert("Veri yok veya hepsi gizlenmiş!"); return; }
-            showLoading(() => {
-                document.getElementById('home-page').style.display = 'none';
-                document.getElementById('dashboard-page').style.display = 'none';
-                document.getElementById('simulation-page').style.display = 'block';
-                goToStep(1);
-            });
-        }
         function goToStep(step) {
             document.querySelectorAll('.sim-step').forEach(el => el.classList.remove('active'));
             document.getElementById('sim-step-' + step).classList.add('active');
@@ -785,7 +902,7 @@
                 });
             }
         }
-        // --- GÜNCELLENMİŞ SİMÜLASYON KARTLARI (Kutusuz ve Yerel Resimli Tasarım) ---
+        
         function renderSimGrid(id, col, cb) {
             const c = document.getElementById(id); 
             c.innerHTML = "";
@@ -795,30 +912,21 @@
                 let d = document.createElement('div'); 
                 
                 if(col === 'Model') {
-                    // MODELLER İÇİN ÖZEL KUTUSUZ TASARIM
                     d.style.display = "flex";
                     d.style.flexDirection = "column";
                     d.style.alignItems = "center";
                     d.style.cursor = "pointer";
                     d.style.padding = "10px";
-                    d.style.transition = "transform 0.2s ease"; // Hafif animasyon
+                    d.style.transition = "transform 0.2s ease"; 
                     
-                    // Doğrudan verideki isimle PNG çağırıyoruz (Örn: "Corolla.png")
                     let imgSrc = "arabalar/" + i + ".webp";
-
-                    // Yazı üstte, araba resmi altta (Kutu yok, sadece gölgeli araba)
-                    // onerror kısmı: klasörde o resim yoksa standart araba ikonu gösterir
                     d.innerHTML = `
                         <b style="margin-bottom: 10px; font-size: 16px; color: #00d4ff; text-shadow: 0 2px 4px rgba(0,0,0,0.8); text-align: center;">${i}</b>
                         <img src="${imgSrc}" style="width: 140px; height: 80px; object-fit: contain; filter: drop-shadow(0px 8px 10px rgba(0,0,0,0.6));" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3204/3204003.png'">
                     `;
-                    
-                    // Üzerine gelince büyüme efekti (Şık Showroom hissiyatı)
                     d.onmouseover = () => d.style.transform = "scale(1.15)";
                     d.onmouseout = () => d.style.transform = "scale(1)";
-                    
                 } else {
-                    // DANIŞMAN VE AY GİBİ DİĞER ADIMLAR İÇİN STANDART KUTULU TASARIM
                     d.className = 'selection-card';
                     d.innerHTML = `<i class="fas fa-check-circle" style="font-size: 24px; margin-bottom: 10px; color: #00d4ff;"></i><b style="text-align: center;">${i}</b>`;
                 }
@@ -838,47 +946,33 @@
             recalculateSim();
         }
         function recalculateSim() {
-            // Seçimleri arayüzden al
             const c = document.getElementById('wi-cons').value;
             const m = document.getElementById('wi-model').value;
             const mo = document.getElementById('wi-month').value; 
 
-            // Ağırlıkları (Slider değerlerini) al
             const wC = parseInt(document.getElementById('w-cons').value);
             const wM = parseInt(document.getElementById('w-model').value);
             const wT = parseInt(document.getElementById('w-month').value);
             
-            // EKRANA YÜZDELERİ YAZDIRMA KODU 
             document.getElementById('val-cons').innerText = "%" + wC;
             document.getElementById('val-model').innerText = "%" + wM;
             document.getElementById('val-month').innerText = "%" + wT;
 
-            // Gerçek Excel verisinden başarı oranını hesaplayan zeka
             const getR = (col, val) => {
                 const sub = cleanData.filter(d=>d[col]===val);
                 return sub.length ? (sub.filter(d=>d.Durum==="Satış").length/sub.length)*100 : 0;
             };
 
-            // Puanları Hesapla
             const rC = getR("Danışman Adı", c); 
             const rM = getR("Model", m); 
             const rT = getR("_Month", mo); 
 
-            // Ağırlıklı Ortalamayı Bul
             const final = ((rC*wC)+(rM*wM)+(rT*wT))/(wC+wM+wT);
 
-            // Ekrana Yazdır
             document.getElementById('result-score').innerText = "%" + final.toFixed(1);
             document.getElementById('result-detail').innerText = `Danışman Başarısı: %${rC.toFixed(0)} | Model Başarısı: %${rM.toFixed(0)} | Ay Ortalaması: %${rT.toFixed(0)}`;
         }
         function resetSim() { goToStep(1); }
-        function openHome() { 
-            showLoading(() => {
-                document.getElementById('simulation-page').style.display='none'; 
-                document.getElementById('dashboard-page').style.display='none'; 
-                document.getElementById('home-page').style.display='flex'; 
-            });
-        }
 
         // --- AYARLAR ---
         let activeCategory = "Model";
