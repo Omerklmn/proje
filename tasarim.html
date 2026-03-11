@@ -670,7 +670,7 @@
             const dimension = document.getElementById('pareto-dimension').value;
             
             // 1. ADIM: Sadece "Kayıp" olan verileri (ayarlardaki gizlemelere/gruplara göre temizlenmiş) filtrele
-            const lossData = cleanData.filter(row => row['Durum'] === 'Kayıp');
+            const lossData = cleanData.filter(row => row['Durum'] && row['Durum'].toString().trim() !== 'Satış');
             
             if (lossData.length === 0) {
                 document.getElementById('pareto-chart').innerHTML = "<h3 style='color:#888; text-align:center; padding-top:180px;'>Yeterli kayıp verisi bulunamadı.</h3>";
