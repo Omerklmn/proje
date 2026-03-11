@@ -32,7 +32,7 @@
         .flip-card-back img { width: 85%; height: 85%; object-fit: contain; }
 
         /* DASHBOARD */
-        #dashboard-page, #simulation-page, #pareto-page { display: none; padding: 20px; background-color: #0e1117; min-height: 100vh; }
+        #dashboard-page, #simulation-page, #pareto-page, #funnel-page { display: none; padding: 20px; background-color: #0e1117; min-height: 100vh; }
         .dash-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00d4ff; padding-bottom: 10px; margin-bottom: 20px; }
         
         /* FİLTRELER */
@@ -146,6 +146,9 @@
                 <button class="cat-btn" onclick="setCategory('Kayıp Nedeni')">❌ Kayıp Nedenleri</button>
                 <button class="cat-btn" onclick="setCategory('Lead Kaynağı')">🔗 Lead Kaynakları</button>
                 
+                <h3 style="margin:15px 0 10px 0; color:#fff; border-top: 1px solid #333; padding-top: 15px;">Huni Ayarları</h3>
+                <button class="cat-btn" onclick="setCategory('Huni Aşaması')">🌪️ Huni Aşamaları</button>
+                
                 <div style="flex:1;"></div>
                 
                 <div style="margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; margin-bottom: 15px;">
@@ -203,6 +206,12 @@
             <div class="flip-card" onclick="openPareto()">
                 <div class="flip-card-inner">
                     <div class="flip-card-front"><h2>DARBOĞAZ<br>ANALİZİ</h2></div>
+                    <div class="flip-card-back"><img src="[[GRAFIK_SRC]]" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3093/3093359.png'"></div>
+                </div>
+            </div>
+            <div class="flip-card" onclick="openFunnel()">
+                <div class="flip-card-inner">
+                    <div class="flip-card-front"><h2>SATIŞ<br>HUNİSİ</h2></div>
                     <div class="flip-card-back"><img src="[[GRAFIK_SRC]]" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3093/3093359.png'"></div>
                 </div>
             </div>
@@ -302,6 +311,16 @@
         <div id="pareto-insight" class="insight-box"></div>
     </div>
 
+    <div id="funnel-page">
+        <div class="dash-header">
+            <button class="btn-back" onclick="openHome()">← ANA MENÜ</button>
+            <h2 style="color:#9b59b6; margin:0;"><i class="fas fa-filter"></i> Satış Dönüşüm Hunisi (Funnel)</h2>
+            <div></div>
+        </div>
+        <p style="text-align:center; color:#aaa; font-size:14px; margin-bottom: 20px;">* Sağlıklı veri için "Ayarlar" sekmesinden Kayıp Nedenlerini Huni Aşamalarıyla eşleştirin.</p>
+        <div id="funnelChart" style="width:100%; height:550px; background:#1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></div>
+    </div>
+
     <div id="simulation-page">
         <div class="dash-header">
             <button class="btn-back" onclick="openHome()">← ANA MENÜ</button>
@@ -368,16 +387,23 @@
 
     <script>
         // GLOBAL DEĞİŞKENLER
-        // GLOBAL DEĞİŞKENLER
         let rawData = [[JSON_DATA]];
         let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
+        
+        // --- Huni Gruplarının Otomatik Olarak Ayarlara Eklenmesi ---
+        if (!globalGroups["Huni Aşaması"]) {
+            globalGroups["Huni Aşaması"] = { 
+                "1. İletişim / Filtreleme": [], 
+                "2. Ürün ve İhtiyaç": [], 
+                "3. Teklif ve Finansman": [] 
+            };
+        }
+
         let hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')) || [];
         let cleanData = [];
-        let currentFilteredData = []; 
+        let currentFilteredData = []; // Yapay Zeka için filtrelenmiş veriyi tutar
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-        
-        // BUNU EKLEDİK: Simülasyon hafızası
-        let simSelections = {};
+        let simSelections = {}; // Simülasyon hafızası düzeltildi!
 
         window.onclick = function(event) {
             if (!event.target.matches('.select-btn')) {
@@ -433,7 +459,6 @@
             type();
         }
 
-        // GEMINI API Cagirici Fonksiyon
         async function callGemini(prompt, targetElementId) {
             const apiKey = localStorage.getItem('geminiApiKey');
             const el = document.getElementById(targetElementId);
@@ -442,7 +467,6 @@
                 return typeWriter(targetElementId, "⚠️ Lütfen önce Ayarlar menüsünden Google Gemini API anahtarınızı girin.");
             }
 
-            // Yükleniyor animasyonu
             el.innerHTML = "<span class='ai-typing' style='color:#f39c12;'>Gemini Flash Analiz Ediyor...</span>";
 
             try {
@@ -455,20 +479,15 @@
                 });
 
                 const data = await response.json();
-                
                 if(data.error) throw new Error(data.error.message);
-                
                 const answer = data.candidates[0].content.parts[0].text;
-                
-                // Gelen cevabı daktilo efektiyle yazdır
-                typeWriter(targetElementId, "🤖 " + answer.replace(/\*/g, '')); // Yıldızları temizliyoruz
+                typeWriter(targetElementId, "🤖 " + answer.replace(/\*/g, ''));
                 
             } catch (error) {
-                typeWriter(targetElementId, "❌ Hata oluştu: API Anahtarınızı kontrol edin veya internet bağlantınızı doğrulayın. Detay: " + error.message);
+                typeWriter(targetElementId, "❌ Hata oluştu: API Anahtarınızı kontrol edin. Detay: " + error.message);
             }
         }
 
-        // --- DERİNLEMESİNE VERİ ÖZETİ ÇIKARICI (YAPAY ZEKANIN YENİ GÖZÜ) ---
         function getVeriOzeti() {
             if(!currentFilteredData || currentFilteredData.length === 0) return "Veri yok.";
             let nTot = currentFilteredData.length;
@@ -484,17 +503,14 @@
                 let k = d["Kayıp Nedeni"];
                 let isSold = d["Durum"] === "Satış";
 
-                // Model bazlı görüşme ve satış sayımı
                 if(!modelStats[m]) modelStats[m] = { gorusme: 0, satis: 0 };
                 modelStats[m].gorusme++;
                 if(isSold) modelStats[m].satis++;
 
-                // Danışman bazlı görüşme ve satış sayımı
                 if(!danismanStats[c]) danismanStats[c] = { gorusme: 0, satis: 0 };
                 danismanStats[c].gorusme++;
                 if(isSold) danismanStats[c].satis++;
 
-                // Kayıp nedeni sayımı
                 if(!isSold && k && k !== "Belirtilmemiş") {
                     if(!kayipStats[k]) kayipStats[k] = 0;
                     kayipStats[k]++;
@@ -512,43 +528,26 @@
         function aiYorumla() {
             let ozet = getVeriOzeti();
             if(ozet === "Veri yok.") return typeWriter("ai-response", "Analiz edilecek veri bulunamadı.");
-            
-            let prompt = `Sen uzman bir otomotiv satış yöneticisisin. Karşında yöneticin Aykut Bey var, ona her zaman saygıyla 'Aykut Bey' diye hitap et. 
-            Şu anki filtrelenmiş verilerin detaylı matematiksel özeti şudur: ${ozet}
-            Lütfen Aykut Bey'e bu durumu maksimum 3 cümleyle profesyonelce yorumla. (Gerekirse görüşme/satış oranlarından başarı yüzdesini hesapla).`;
-            
+            let prompt = `Sen uzman bir otomotiv satış yöneticisisin. Karşında yöneticin Aykut Bey var, ona her zaman saygıyla 'Aykut Bey' diye hitap et. Şu anki filtrelenmiş verilerin detaylı matematiksel özeti şudur: ${ozet} Lütfen Aykut Bey'e bu durumu maksimum 3 cümleyle profesyonelce yorumla.`;
             callGemini(prompt, "ai-response");
         }
 
         function aiOneriVer() {
             let ozet = getVeriOzeti();
             if(ozet === "Veri yok.") return typeWriter("ai-response", "Veri yok, öneri üretilemiyor.");
-            
-            let prompt = `Sen profesyonel bir satış stratejistisin. Yöneticin Aykut Bey'e hitap ederek yaz. 
-            Şu anki detaylı veri özeti: ${ozet}
-            Bu verilere (özellikle kayıp nedenlerine ve satış oranlarına) bakarak Aykut Bey'e durumu toparlaması veya daha da iyileştirmesi için çok stratejik, nokta atışı tek bir taktik ver. Maksimum 3 cümle olsun.`;
-            
+            let prompt = `Sen profesyonel bir satış stratejistisin. Yöneticin Aykut Bey'e hitap ederek yaz. Şu anki detaylı veri özeti: ${ozet} Bu verilere bakarak Aykut Bey'e durumu toparlaması için çok stratejik tek bir taktik ver. Maksimum 3 cümle olsun.`;
             callGemini(prompt, "ai-response");
         }
 
         function aiOzelSoru() {
             let soru = document.getElementById("ai-custom-prompt").value.trim();
             if(!soru) return;
-            
             let ozet = getVeriOzeti();
-            
-            let prompt = `Sen profesyonel bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun (Hitabın Aykut Bey olsun). 
-            Şu an Aykut Bey'in ekranda gördüğü filtrelenmiş verilerin tüm röntgeni şu şekildedir:
-            ${ozet}
-
-            Aykut Bey'in sana özel sorusu şu: "${soru}". 
-            Lütfen sadece sana verdiğim bu veri özetine bakarak, gerekirse başarı yüzdelerini (Satış/Görüşme) kendin hesaplayarak çok net, analitik ve doğru bir cevap ver. Sadece sorulana odaklan.`;
-
+            let prompt = `Sen profesyonel bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun. Verilerin röntgeni: ${ozet}. Soru: "${soru}". Sadece sana verdiğim bu veriye bakarak analitik bir cevap ver.`;
             callGemini(prompt, "ai-response");
-            document.getElementById("ai-custom-prompt").value = ""; // Kutuyu temizle
+            document.getElementById("ai-custom-prompt").value = "";
         }
 
-        // --- SİMÜLASYON YAPAY ZEKA FONKSİYONLARI ---
         function getSimContext() {
             let c = document.getElementById('wi-cons').value;
             let m = document.getElementById('wi-model').value;
@@ -559,7 +558,7 @@
 
         function aiSimYorumla() {
             let context = getSimContext();
-            let prompt = `Sen bir otomotiv satış asistanısın. Yöneticin Aykut Bey sana simülasyon verileri veriyor. Mutlaka 'Aykut Bey' diye hitap et. Senaryo: ${context} Bu senaryonun güçlü ve zayıf yanını 2-3 cümleyle Aykut Bey'e özetle.`;
+            let prompt = `Sen bir otomotiv satış asistanısın. Yöneticin Aykut Bey'e hitap et. Senaryo: ${context} Bu senaryonun güçlü ve zayıf yanını 2-3 cümleyle özetle.`;
             callGemini(prompt, "sim-ai-response");
         }
 
@@ -567,7 +566,7 @@
             let soru = document.getElementById("sim-custom-prompt").value.trim();
             if(!soru) return;
             let context = getSimContext();
-            let prompt = `Sen bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun. Simülasyon Senaryosu: ${context}. Aykut Bey'in sorusu: "${soru}". Buna profesyonel, kısa ve akılcı bir cevap ver. Aykut Bey diye hitap etmeyi unutma.`;
+            let prompt = `Sen bir veri asistanısın. Yöneticin Aykut Bey'e cevap ver. Senaryo: ${context}. Soru: "${soru}".`;
             callGemini(prompt, "sim-ai-response");
             document.getElementById("sim-custom-prompt").value = "";
         }
@@ -588,7 +587,7 @@
             }).map(d => {
                 let row = {...d};
                 for (let cat in globalGroups) {
-                    if (globalGroups[cat]) {
+                    if (globalGroups[cat] && cat !== "Huni Aşaması") { // Huni Aşaması veriyi manipüle etmez
                         for (let gName in globalGroups[cat]) {
                             if (globalGroups[cat][gName].includes(d[cat])) {
                                 row[cat] = gName; 
@@ -610,24 +609,13 @@
             return { y: d.getFullYear().toString(), m: monthNames[d.getMonth()], idx: d.getMonth() };
         }
 
-        // --- YÜKLEME (GEÇİŞ) EFEKTİ FONKSİYONU ---
         function showLoading(callback) {
             const loader = document.getElementById('loading-screen');
             const fillImg = document.getElementById('loading-fill-img');
-            
-            loader.style.display = 'flex'; // Siyah ekranı aç
-            fillImg.style.clipPath = 'inset(100% 0 0 0)'; // Resmi boşalt
-            
-            // 50ms sonra dolma animasyonunu tetikle
-            setTimeout(() => {
-                fillImg.style.clipPath = 'inset(0 0 0 0)'; // Resmi aşağıdan yukarı doldur
-            }, 50);
-
-            // 1 saniye sonra hedef sayfaya geçiş yap ve yükleme ekranını kapat
-            setTimeout(() => {
-                loader.style.display = 'none';
-                callback();
-            }, 1050); 
+            loader.style.display = 'flex';
+            fillImg.style.clipPath = 'inset(100% 0 0 0)';
+            setTimeout(() => { fillImg.style.clipPath = 'inset(0 0 0 0)'; }, 50);
+            setTimeout(() => { loader.style.display = 'none'; callback(); }, 1050); 
         }
 
         // --- SAYFA AÇILIŞLARI ---
@@ -637,10 +625,9 @@
                 document.getElementById('home-page').style.display = 'none';
                 document.getElementById('simulation-page').style.display = 'none';
                 document.getElementById('pareto-page').style.display = 'none';
+                document.getElementById('funnel-page').style.display = 'none';
                 document.getElementById('dashboard-page').style.display = 'block';
-                processData();
-                initFilters();
-                updateDash();
+                processData(); initFilters(); updateDash();
             });
         }
 
@@ -652,6 +639,7 @@
                 document.getElementById('home-page').style.display = 'none';
                 document.getElementById('dashboard-page').style.display = 'none';
                 document.getElementById('pareto-page').style.display = 'none';
+                document.getElementById('funnel-page').style.display = 'none';
                 document.getElementById('simulation-page').style.display = 'block';
                 goToStep(1);
             });
@@ -660,11 +648,12 @@
         // --- PARETO ANALİZİ MOTORU ---
         function openPareto() {
             if(rawData.length === 0) { alert("Veri yok!"); return; }
-            processData(); // Verilerin gruplanmış halini (cleanData) kullanacağız
+            processData(); 
             showLoading(() => {
                 document.getElementById('home-page').style.display = 'none';
                 document.getElementById('dashboard-page').style.display = 'none';
                 document.getElementById('simulation-page').style.display = 'none';
+                document.getElementById('funnel-page').style.display = 'none';
                 document.getElementById('pareto-page').style.display = 'block';
                 renderPareto();
             });
@@ -672,8 +661,7 @@
 
         function renderPareto() {
             const dimension = document.getElementById('pareto-dimension').value;
-            
-            // 1. ADIM: Sadece "Kayıp" olan verileri (ayarlardaki gizlemelere/gruplara göre temizlenmiş) filtrele
+            // DÜZELTİLDİ: Excelde satıs dısında her ne yazıyorsa kayıp sayacak.
             const lossData = cleanData.filter(row => row['Durum'] && row['Durum'].toString().trim() !== 'Satış');
             
             if (lossData.length === 0) {
@@ -682,69 +670,38 @@
                 return;
             }
 
-            // 2. ADIM: Frekansları hesapla
             const counts = {};
             lossData.forEach(row => {
                 const val = row[dimension] || "Belirtilmemiş";
                 counts[val] = (counts[val] || 0) + 1;
             });
 
-            // 3. ADIM: Büyükten küçüğe sırala
             const sortedItems = Object.keys(counts).map(k => ({ name: k, count: counts[k] })).sort((a, b) => b.count - a.count);
-
-            // 4. ADIM: Kümülatif Yüzde ve %80 Sınırını Hesapla
             const totalLoss = lossData.length;
-            let cumulative = 0;
-            const xValues = [];
-            const yBars = [];
-            const yLines = [];
-            
-            const pareto80Items = []; // Darboğazı oluşturan suçlular
-            let thresholdCrossed = false;
+            let cumulative = 0; const xValues = []; const yBars = []; const yLines = [];
+            const pareto80Items = []; let thresholdCrossed = false;
 
             sortedItems.forEach(item => {
-                xValues.push(item.name);
-                yBars.push(item.count);
-                
-                cumulative += item.count;
-                const cumPercent = (cumulative / totalLoss) * 100;
+                xValues.push(item.name); yBars.push(item.count);
+                cumulative += item.count; const cumPercent = (cumulative / totalLoss) * 100;
                 yLines.push(cumPercent);
-                
-                // %80 veya ona en yakın ilk noktaları tespit et
-                if (!thresholdCrossed) {
-                    pareto80Items.push(item.name);
-                    if (cumPercent >= 80) thresholdCrossed = true;
-                }
+                if (!thresholdCrossed) { pareto80Items.push(item.name); if (cumPercent >= 80) thresholdCrossed = true; }
             });
 
-            // 5. ADIM: Plotly.js ile Çift Eksenli (Dual-Axis) Çizim
-            const traceBar = {
-                x: xValues, y: yBars, type: 'bar', name: 'Kayıp Adedi',
-                marker: { color: '#e74c3c' }
-            };
-
-            const traceLine = {
-                x: xValues, y: yLines, type: 'scatter', mode: 'lines+markers',
-                name: 'Kümülatif %', yaxis: 'y2',
-                line: { color: '#f39c12', width: 3 }, marker: { size: 8 }
-            };
+            const traceBar = { x: xValues, y: yBars, type: 'bar', name: 'Kayıp Adedi', marker: { color: '#e74c3c' } };
+            const traceLine = { x: xValues, y: yLines, type: 'scatter', mode: 'lines+markers', name: 'Kümülatif %', yaxis: 'y2', line: { color: '#f39c12', width: 3 }, marker: { size: 8 } };
 
             const layout = {
                 title: { text: `Toplam ${totalLoss} Kaybın "${dimension}" Bazlı Analizi`, font: { color: '#fff', size: 16 } },
-                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-                font: { color: '#ddd' },
-                xaxis: { tickangle: -25 },
-                yaxis: { title: 'Kayıp Adedi', gridcolor: '#333' },
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#ddd' },
+                xaxis: { tickangle: -25 }, yaxis: { title: 'Kayıp Adedi', gridcolor: '#333' },
                 yaxis2: { title: 'Kümülatif Yüzde (%)', overlaying: 'y', side: 'right', range: [0, 105], gridcolor: 'transparent' },
-                showlegend: false,
-                margin: { b: 80, t: 60, l: 50, r: 50 }
+                showlegend: false, margin: { b: 80, t: 60, l: 50, r: 50 }
             };
 
-            // Önceki çizimi temizle ve yenisini çiz
             document.getElementById('pareto-chart').innerHTML = "";
             Plotly.newPlot('pareto-chart', [traceBar, traceLine], layout, {responsive: true});
 
-            // 6. ADIM: Yöneticinin İnisiyatifine Bırakan Teşhis Raporu
             const totalCategories = sortedItems.length;
             const bottleneckCount = pareto80Items.length;
             const bottleneckPercent = (yLines[bottleneckCount - 1]).toFixed(1);
@@ -752,13 +709,67 @@
             let insightHTML = `<h3 style="margin-top:0;"><i class="fas fa-crosshairs insight-highlight"></i> Sistem Teşhisi ve Yönlendirme</h3>`;
             insightHTML += `Sistemdeki toplam <b>${totalLoss}</b> adet satış kaybı incelendiğinde; <b>${totalCategories}</b> farklı alt kategori olduğu görülmektedir.<br><br>`;
             insightHTML += `Ancak Pareto kuralına (Kısıtlar Teorisi) göre, kayıplarınızın <span class="insight-highlight">%${bottleneckPercent}</span>'lik devasa bir kısmı sadece şu <b>${bottleneckCount}</b> ana etkende yoğunlaşmıştır:<br>`;
-            
             insightHTML += `<ul style="margin:10px 0; color:#fff;">` + pareto80Items.map(i => `<li><b>${i}</b></li>`).join('') + `</ul>`;
-            
-            // DİKKAT: Çözüm yok, sadece odak noktası var!
             insightHTML += `<i><b>Yönetici Aksiyon Önerisi:</b> Diğer ${totalCategories - bottleneckCount} tali nedene zaman harcamak yerine, şirketin operasyonel iyileştirme eforunun öncelikli olarak bu <b>${bottleneckCount}</b> ana darboğazın kök nedenlerini araştırmaya yönlendirilmesi önerilmektedir.</i>`;
 
             document.getElementById('pareto-insight').innerHTML = insightHTML;
+        }
+
+        // --- YENİ EKLENEN: SATIŞ HUNİSİ (FUNNEL) MOTORU ---
+        function openFunnel() {
+            if(rawData.length === 0) { alert("Veri yok!"); return; }
+            processData(); 
+            showLoading(() => {
+                document.getElementById('home-page').style.display = 'none';
+                document.getElementById('dashboard-page').style.display = 'none';
+                document.getElementById('simulation-page').style.display = 'none';
+                document.getElementById('pareto-page').style.display = 'none';
+                document.getElementById('funnel-page').style.display = 'block';
+                renderFunnel();
+            });
+        }
+
+        function renderFunnel() {
+            let totalLeads = cleanData.length;
+            let totalSales = cleanData.filter(row => row['Durum'] === 'Satış').length;
+
+            let dropStage1 = 0; // İletişimde kopanlar
+            let dropStage2 = 0; // Ürün aşamasında kopanlar
+            let dropStage3 = 0; // Teklif aşamasında kopanlar
+            
+            let huniGroups = globalGroups["Huni Aşaması"] || {};
+            
+            cleanData.forEach(row => {
+                if(row['Durum'] !== 'Satış' && row['Kayıp Nedeni']) {
+                    let reason = row['Kayıp Nedeni'].toString().trim();
+                    if (huniGroups["1. İletişim / Filtreleme"] && huniGroups["1. İletişim / Filtreleme"].includes(reason)) dropStage1++;
+                    else if (huniGroups["2. Ürün ve İhtiyaç"] && huniGroups["2. Ürün ve İhtiyaç"].includes(reason)) dropStage2++;
+                    else if (huniGroups["3. Teklif ve Finansman"] && huniGroups["3. Teklif ve Finansman"].includes(reason)) dropStage3++;
+                }
+            });
+
+            // Kümülatif Mantık: Bir aşamadan geçenler, o aşamada kaybedilenlerin çıkarılmasıyla bulunur.
+            let passedStage1 = totalLeads - dropStage1; // İletişimi geçip masaya oturanlar
+            let passedStage2 = passedStage1 - dropStage2; // Masaya oturup fiyat müzakeresine kalanlar
+            
+            var data = [{
+                type: 'funnel',
+                y: ['1. Toplam Lead (Giriş)', '2. İletişimi Geçenler', '3. Müzakereye Kalanlar', '4. Satışa Dönenler'],
+                x: [totalLeads, passedStage1, passedStage2, totalSales],
+                hoverinfo: 'x+percent previous+percent initial',
+                textinfo: "value+percent initial",
+                marker: { color: ["#3498db", "#f39c12", "#e67e22", "#27ae60"] }
+            }];
+
+            var layout = {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: '#ddd', size: 14 },
+                margin: { l: 220, r: 50, t: 40, b: 20 }
+            };
+
+            document.getElementById('funnelChart').innerHTML = "";
+            Plotly.newPlot('funnelChart', data, layout, {responsive: true});
         }
 
         function openHome() { 
@@ -766,6 +777,7 @@
                 document.getElementById('simulation-page').style.display='none'; 
                 document.getElementById('dashboard-page').style.display='none'; 
                 document.getElementById('pareto-page').style.display='none'; 
+                document.getElementById('funnel-page').style.display='none'; 
                 document.getElementById('home-page').style.display='flex'; 
             });
         }
@@ -804,20 +816,14 @@
                 
                 yearWrap.appendChild(row); yearWrap.appendChild(monthsContainer); container.appendChild(yearWrap);
                 
-                yearCheck.onchange = function() { 
-                    monthsContainer.querySelectorAll(".tree-month-check").forEach(s => s.checked = yearCheck.checked); 
-                    updateDash(); 
-                };
-                
+                yearCheck.onchange = function() { monthsContainer.querySelectorAll(".tree-month-check").forEach(s => s.checked = yearCheck.checked); updateDash(); };
                 monthsContainer.querySelectorAll(".tree-month-check").forEach(mCheck => {
                     mCheck.onchange = function() { 
                         const allMonthsChecked = Array.from(monthsContainer.querySelectorAll(".tree-month-check")).every(c => c.checked);
-                        yearCheck.checked = allMonthsChecked;
-                        updateDash(); 
+                        yearCheck.checked = allMonthsChecked; updateDash(); 
                     };
                 });
             });
-            
             document.getElementById("all-date-check").onclick = function(e) { e.stopPropagation(); const state = this.checked; container.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = state); updateDash(); };
         }
         function getSelected(listId) { return Array.from(document.querySelectorAll(`.item-check-${listId}:checked`)).map(i => i.value); }
@@ -838,7 +844,6 @@
             document.getElementById("btn-tarih").innerHTML = (selMonths === totalMonths) ? "Hepsi ▼" : selMonths + " Ay ▼";
             
             const filtered = cleanData.filter(d => selDanisman.includes(d["Danışman Adı"]) && selModel.includes(d["Model"]) && selDatePairs.includes(d["_Year"] + "-" + d["_Month"]));
-            
             currentFilteredData = filtered;
 
             document.getElementById("k-top").innerText = filtered.length;
@@ -875,9 +880,7 @@
             Plotly.newPlot('c-model', [
                 { x: satisData, y: models, name: 'Satış', type: 'bar', orientation: 'h', marker:{color:'#2ecc71'} }, 
                 { x: digerData, y: models, name: 'Diğer', type: 'bar', orientation: 'h', marker:{color:'#e74c3c'} }
-            ], { 
-                ...baseLayout, title: 'Model Performansı', barmode:'stack', margin:{ l: marginModel, r:20, t:40, b:20 } 
-            });
+            ], { ...baseLayout, title: 'Model Performansı', barmode:'stack', margin:{ l: marginModel, r:20, t:40, b:20 } });
 
             const d1 = count(data, "Durum"); 
             Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...baseLayout, title: 'Satış Durumu' });
@@ -908,35 +911,23 @@
         }
         
         function renderSimGrid(id, col, cb) {
-            const c = document.getElementById(id); 
-            c.innerHTML = "";
+            const c = document.getElementById(id); c.innerHTML = "";
             const items = [...new Set(cleanData.map(d=>d[col]))].sort();
             
             items.forEach(i => {
                 let d = document.createElement('div'); 
-                
                 if(col === 'Model') {
-                    d.style.display = "flex";
-                    d.style.flexDirection = "column";
-                    d.style.alignItems = "center";
-                    d.style.cursor = "pointer";
-                    d.style.padding = "10px";
-                    d.style.transition = "transform 0.2s ease"; 
-                    
+                    d.style.display = "flex"; d.style.flexDirection = "column"; d.style.alignItems = "center";
+                    d.style.cursor = "pointer"; d.style.padding = "10px"; d.style.transition = "transform 0.2s ease"; 
                     let imgSrc = "arabalar/" + i + ".webp";
-                    d.innerHTML = `
-                        <b style="margin-bottom: 10px; font-size: 16px; color: #00d4ff; text-shadow: 0 2px 4px rgba(0,0,0,0.8); text-align: center;">${i}</b>
-                        <img src="${imgSrc}" style="width: 140px; height: 80px; object-fit: contain; filter: drop-shadow(0px 8px 10px rgba(0,0,0,0.6));" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3204/3204003.png'">
-                    `;
-                    d.onmouseover = () => d.style.transform = "scale(1.15)";
-                    d.onmouseout = () => d.style.transform = "scale(1)";
+                    d.innerHTML = `<b style="margin-bottom: 10px; font-size: 16px; color: #00d4ff; text-shadow: 0 2px 4px rgba(0,0,0,0.8); text-align: center;">${i}</b>
+                        <img src="${imgSrc}" style="width: 140px; height: 80px; object-fit: contain; filter: drop-shadow(0px 8px 10px rgba(0,0,0,0.6));" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3204/3204003.png'">`;
+                    d.onmouseover = () => d.style.transform = "scale(1.15)"; d.onmouseout = () => d.style.transform = "scale(1)";
                 } else {
                     d.className = 'selection-card';
                     d.innerHTML = `<i class="fas fa-check-circle" style="font-size: 24px; margin-bottom: 10px; color: #00d4ff;"></i><b style="text-align: center;">${i}</b>`;
                 }
-
-                d.onclick = () => cb(i);
-                c.appendChild(d);
+                d.onclick = () => cb(i); c.appendChild(d);
             });
         }
         function initResult() {
@@ -950,27 +941,13 @@
             recalculateSim();
         }
         function recalculateSim() {
-            const c = document.getElementById('wi-cons').value;
-            const m = document.getElementById('wi-model').value;
-            const mo = document.getElementById('wi-month').value; 
-
-            const wC = parseInt(document.getElementById('w-cons').value);
-            const wM = parseInt(document.getElementById('w-model').value);
-            const wT = parseInt(document.getElementById('w-month').value);
+            const c = document.getElementById('wi-cons').value; const m = document.getElementById('wi-model').value; const mo = document.getElementById('wi-month').value; 
+            const wC = parseInt(document.getElementById('w-cons').value); const wM = parseInt(document.getElementById('w-model').value); const wT = parseInt(document.getElementById('w-month').value);
             
-            document.getElementById('val-cons').innerText = "%" + wC;
-            document.getElementById('val-model').innerText = "%" + wM;
-            document.getElementById('val-month').innerText = "%" + wT;
+            document.getElementById('val-cons').innerText = "%" + wC; document.getElementById('val-model').innerText = "%" + wM; document.getElementById('val-month').innerText = "%" + wT;
 
-            const getR = (col, val) => {
-                const sub = cleanData.filter(d=>d[col]===val);
-                return sub.length ? (sub.filter(d=>d.Durum==="Satış").length/sub.length)*100 : 0;
-            };
-
-            const rC = getR("Danışman Adı", c); 
-            const rM = getR("Model", m); 
-            const rT = getR("_Month", mo); 
-
+            const getR = (col, val) => { const sub = cleanData.filter(d=>d[col]===val); return sub.length ? (sub.filter(d=>d.Durum==="Satış").length/sub.length)*100 : 0; };
+            const rC = getR("Danışman Adı", c); const rM = getR("Model", m); const rT = getR("_Month", mo); 
             const final = ((rC*wC)+(rM*wM)+(rT*wT))/(wC+wM+wT);
 
             document.getElementById('result-score').innerText = "%" + final.toFixed(1);
@@ -992,17 +969,20 @@
             localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); 
             localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); 
             document.getElementById('settings-modal').style.display='none'; 
-            if(document.getElementById('dashboard-page').style.display==='block') { 
-                processData(); initFilters(); updateDash(); 
-            } 
+            if(document.getElementById('dashboard-page').style.display==='block') { processData(); initFilters(); updateDash(); } 
         }
         
         function discardAndCloseSettings() { globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')); hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')); document.getElementById('settings-modal').style.display='none'; }
         
         function setCategory(cat) { activeCategory = cat; renderSettingsLists(); document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active')); event.target.classList.add('active'); }
+        
         function renderSettingsLists() {
             const rd = document.getElementById('raw-list'); const gd = document.getElementById('group-list'); rd.innerHTML=""; gd.innerHTML="";
-            const items = [...new Set(rawData.map(d=>d[activeCategory]))].sort();
+            
+            // Huni Aşaması seçiliyse, listeye "Kayıp Nedeni" sütunundaki kelimeleri çekeceğiz
+            let colName = (activeCategory === "Huni Aşaması") ? "Kayıp Nedeni" : activeCategory;
+            
+            const items = [...new Set(rawData.map(d=>d[colName]))].sort();
             let assigned = []; for(let g in globalGroups[activeCategory]) assigned.push(...globalGroups[activeCategory][g]);
             
             items.forEach(i => {
@@ -1033,28 +1013,17 @@
         function addSelectedToGroup(gName) {
             const selectedItems = document.querySelectorAll('.raw-item.selected');
             if(selectedItems.length === 0) { alert("Listeden eklenecek verileri seçin."); return; }
-            
-            selectedItems.forEach(el => {
-                const val = el.innerText;
-                if(!globalGroups[activeCategory][gName].includes(val)) {
-                    globalGroups[activeCategory][gName].push(val);
-                }
-            });
+            selectedItems.forEach(el => { const val = el.innerText; if(!globalGroups[activeCategory][gName].includes(val)) { globalGroups[activeCategory][gName].push(val); } });
             renderSettingsLists();
         }
         
-        function removeFromGroup(gName, item) {
-            globalGroups[activeCategory][gName] = globalGroups[activeCategory][gName].filter(x => x !== item);
-            renderSettingsLists();
-        }
-        
+        function removeFromGroup(gName, item) { globalGroups[activeCategory][gName] = globalGroups[activeCategory][gName].filter(x => x !== item); renderSettingsLists(); }
         function deleteGroup(name) { delete globalGroups[activeCategory][name]; renderSettingsLists(); }
         
         function toggleHideSelected() {
             document.querySelectorAll('.raw-item.selected').forEach(el => {
                 const val = el.innerText.trim();
-                if(hiddenItems.includes(val)) hiddenItems = hiddenItems.filter(x=>x!==val);
-                else hiddenItems.push(val);
+                if(hiddenItems.includes(val)) hiddenItems = hiddenItems.filter(x=>x!==val); else hiddenItems.push(val);
             });
             renderSettingsLists();
         }
