@@ -368,12 +368,16 @@
 
     <script>
         // GLOBAL DEĞİŞKENLER
+        // GLOBAL DEĞİŞKENLER
         let rawData = [[JSON_DATA]];
         let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
         let hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')) || [];
         let cleanData = [];
-        let currentFilteredData = []; // Yapay Zeka için filtrelenmiş veriyi tutar
+        let currentFilteredData = []; 
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        
+        // BUNU EKLEDİK: Simülasyon hafızası
+        let simSelections = {};
 
         window.onclick = function(event) {
             if (!event.target.matches('.select-btn')) {
