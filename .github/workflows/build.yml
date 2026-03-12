@@ -5,6 +5,11 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# --- NODE.JS 24 GÜNCELLEMESİ (UYARI GİZLEYİCİ) ---
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+# ------------------------------------------------
+
 jobs:
   build:
     runs-on: windows-latest
