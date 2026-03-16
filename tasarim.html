@@ -404,49 +404,30 @@
        window.addEventListener('pywebviewready', function() {
             window.pywebview.api.load_ui_settings().then(function(response) {
                 if(response && response !== "{}") {
-                    let data = JSON.parse(response);
-                    
-                    if(data.groups) {
-                        globalGroups = data.groups;
-                        localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups));
+                    try {
+                        let data = JSON.parse(response);
+                        
+                        if(data.groups) globalGroups = data.groups;
+                        if(data.hidden) hiddenItems = data.hidden;
+                        if(data.apiKey) {
+                            let keyInput = document.getElementById('gemini-api-key');
+                            if(keyInput) keyInput.value = data.apiKey;
+                        }
+                        
+                        // EKRANI YENİLE
+                        if (typeof renderSettingsLists === "function") renderSettingsLists();
+                        if (typeof initFilters === "function") initFilters();
+                        if (typeof processData === "function") processData();
+                        if (typeof updateDash === "function") updateDash();
+                    } catch(e) {
+                        alert("Ayar dosyası bozuk veya okunamadı: " + e.message);
                     }
-                    if(data.hidden) {
-                        hiddenItems = data.hidden;
-                        localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems));
-                    }
-                    if(data.apiKey) {
-                        localStorage.setItem('geminiApiKey', data.apiKey);
-                        document.getElementById('gemini-api-key').value = data.apiKey;
-                    }
-                    
-                    // İŞTE BÜTÜN SORUNU ÇÖZEN, EKRANI YENİLEYEN KODLAR BURASI:
-                    if (typeof renderSettingsLists === "function") renderSettingsLists();
-                    if (typeof initFilters === "function") initFilters();
-                    if (typeof processData === "function") processData();
-                    if (typeof updateDash === "function") updateDash();
                 }
+            }).catch(function(err) {
+                alert("Python bağlantısı kurulamadı: " + err);
             });
         });
-        function saveAndCloseSettings() { 
-            localStorage.setItem('geminiApiKey', document.getElementById('gemini-api-key').value.trim());
-            localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); 
-            localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); 
-            
-            // Ayarları paketleyip Python'a yolla (ui_ayarlar.json'u oluşturan kısım burası!)
-            if(window.pywebview && window.pywebview.api) {
-                const ayarPaketi = { 
-                    groups: globalGroups, 
-                    hidden: hiddenItems, 
-                    apiKey: localStorage.getItem('geminiApiKey') 
-                };
-                window.pywebview.api.save_ui_settings(JSON.stringify(ayarPaketi));
-            }
-
-            document.getElementById('settings-modal').style.display='none'; 
-            if(document.getElementById('dashboard-page').style.display==='block') { 
-                processData(); initFilters(); updateDash(); 
-            } 
-        }
+       
         // GLOBAL DEĞİŞKENLER
         let rawData = [[JSON_DATA]];
         let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
@@ -1026,11 +1007,39 @@
         }
         
         function saveAndCloseSettings() { 
-            localStorage.setItem('geminiApiKey', document.getElementById('gemini-api-key').value.trim());
-            localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); 
-            localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); 
-            document.getElementById('settings-modal').style.display='none'; 
-            if(document.getElementById('dashboard-page').style.display==='block') { processData(); initFilters(); updateDash(); } 
+            try {
+                // LocalStorage tamamen kaldırıldı! Sadece Python'a güveniyoruz.
+                let keyInput = document.getElementById('gemini-api-key');
+                let apiKeyVal = keyInput ? keyInput.value.trim() : "";
+                
+                const ayarPaketi = { 
+                    groups: globalGroups, 
+                    hidden: hiddenItems, 
+                    apiKey: apiKeyVal
+                };
+                
+                if(window.pywebview && window.pywebview.api) {
+                    window.pywebview.api.save_ui_settings(JSON.stringify(ayarPaketi)).then(function(res) {
+                        if(res !== "OK") {
+                            alert("Ayarlar kaydedilemedi! Klasör izinlerinde sorun olabilir: " + res);
+                        }
+                    });
+                } else {
+                    alert("Uyarı: Python bağlantısı koptu. Ayarlar geçici kaydedildi.");
+                }
+            } catch(e) {
+                alert("Kaydetme sırasında bir hata oluştu: " + e.message);
+            }
+
+            let modal = document.getElementById('settings-modal');
+            if(modal) modal.style.display = 'none'; 
+            
+            let dash = document.getElementById('dashboard-page');
+            if(dash && dash.style.display === 'block') { 
+                if (typeof processData === "function") processData();
+                if (typeof initFilters === "function") initFilters();
+                if (typeof updateDash === "function") updateDash();
+            } 
         }
         
         function discardAndCloseSettings() { globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')); hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')); document.getElementById('settings-modal').style.display='none'; }
@@ -1100,13 +1109,18 @@
         function executeReset() {
             const inputVal = document.getElementById('reset-confirm-input').value.trim().toLowerCase();
             if (inputVal === "sıfırla" || inputVal === "sifirla") {
-                localStorage.removeItem('dashboardGroups');
-                localStorage.removeItem('hiddenItems');
+                
                 globalGroups = { 
                     "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {},
                     "Huni Aşaması": { "1. İletişim / Filtreleme": [], "2. Ürün ve İhtiyaç": [], "3. Teklif ve Finansman": [] } 
                 };
                 hiddenItems = [];
+                
+                // Klasördeki dosyayı sil/temizle
+                if(window.pywebview && window.pywebview.api) {
+                    window.pywebview.api.save_ui_settings("{}"); 
+                }
+                
                 alert("Tüm ayarlar başarıyla sıfırlandı!");
                 closeResetConfirm();
                 renderSettingsLists(); 
