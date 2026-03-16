@@ -146,9 +146,23 @@ def main():
         html_content = html_content.replace("[[GRAFIK_SRC]]", get_image_data("grafik_resmi.png"))
         html_content = html_content.replace("[[SIM_SRC]]", get_image_data("simulasyon_resmi.png"))
 
-        temp_dir = tempfile.gettempdir()
+        # --- RESİM VE ÖNBELLEK ÇÖZÜMÜ ---
+        gercek_klasor = get_real_path("")
+        
+        # 1. Eski açılışlardan kalan gizli HTML dosyalarını temizle (Klasör çöp dolmasın)
+        try:
+            for dosya_adi in os.listdir(gercek_klasor):
+                if dosya_adi.startswith("SatisAnaliz_Gizli_") and dosya_adi.endswith(".html"):
+                    try:
+                        os.remove(os.path.join(gercek_klasor, dosya_adi))
+                    except:
+                        pass
+        except:
+            pass
+
+        # 2. Yeni dosyayı TEMP'e değil, direkt resimlerin ve EXE'nin yanına oluştur!
         unique_id = uuid.uuid4().hex
-        temp_file = os.path.join(temp_dir, f"SatisAnaliz_{unique_id}.html")
+        temp_file = os.path.join(gercek_klasor, f"SatisAnaliz_Gizli_{unique_id}.html")
 
         with open(temp_file, "w", encoding="utf-8") as f:
             f.write(html_content)
