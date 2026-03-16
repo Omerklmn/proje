@@ -401,6 +401,52 @@
         </div>
     </div>
     <script>
+        // --- YENİ: PYTHON İLE KÖPRÜ BAĞLANTISI (AÇILIŞ) ---
+        window.addEventListener('pywebviewready', function() {
+            // Pencere açılınca Python'dan fiziksel ayarları çek
+            window.pywebview.api.load_ui_settings().then(function(response) {
+                if(response && response !== "{}") {
+                    let data = JSON.parse(response);
+                    
+                    if(data.groups) {
+                        globalGroups = data.groups;
+                        localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups));
+                    }
+                    if(data.hidden) {
+                        hiddenItems = data.hidden;
+                        localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems));
+                    }
+                    if(data.apiKey) {
+                        localStorage.setItem('geminiApiKey', data.apiKey);
+                        document.getElementById('gemini-api-key').value = data.apiKey;
+                    }
+                    console.log("Ayarlar Python'dan başarıyla yüklendi.");
+                }
+            });
+        });
+
+        // --- MEVCUT KAYDET BUTONUNU GÜNCELLEME ---
+        // Kodundaki mevcut 'saveAndCloseSettings' fonksiyonunu bulup BUNUNLA DEĞİŞTİR:
+        function saveAndCloseSettings() { 
+            localStorage.setItem('geminiApiKey', document.getElementById('gemini-api-key').value.trim());
+            localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); 
+            localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); 
+            
+            // Ayarları paketleyip Python'a (fiziksel dosyaya) yolla
+            if(window.pywebview) {
+                const ayarPaketi = { 
+                    groups: globalGroups, 
+                    hidden: hiddenItems, 
+                    apiKey: localStorage.getItem('geminiApiKey') 
+                };
+                window.pywebview.api.save_ui_settings(JSON.stringify(ayarPaketi));
+            }
+
+            document.getElementById('settings-modal').style.display='none'; 
+            if(document.getElementById('dashboard-page').style.display==='block') { 
+                processData(); initFilters(); updateDash(); 
+            } 
+        }
         // GLOBAL DEĞİŞKENLER
         let rawData = [[JSON_DATA]];
         let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
