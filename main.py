@@ -3,9 +3,9 @@ import json
 import os
 import sys
 import base64
-import webbrowser
 import tkinter as tk
 from tkinter import filedialog, messagebox
+import webview  # YENİ EKLENDİ: Gerçek pencere ve köprü için
 
 # --- YARDIMCI FONKSİYONLAR ---
 def resource_path(relative_path):
@@ -26,6 +26,27 @@ def get_image_data(filename):
         except:
             pass
     return "https://via.placeholder.com/300x200?text=Gorsel+Yok"
+
+# --- HTML VE PYTHON KÖPRÜSÜ (API) ---
+class Api:
+    def save_ui_settings(self, settings_json):
+        # Arayüz ayarlarını ui_ayarlar.json adlı dosyaya fiziksel olarak kaydeder
+        try:
+            with open("ui_ayarlar.json", "w", encoding="utf-8") as f:
+                f.write(settings_json)
+            return "OK"
+        except Exception as e:
+            return str(e)
+
+    def load_ui_settings(self):
+        # Program açıldığında ayarları fiziksel dosyadan okur
+        if os.path.exists("ui_ayarlar.json"):
+            try:
+                with open("ui_ayarlar.json", "r", encoding="utf-8") as f:
+                    return f.read()
+            except:
+                return "{}"
+        return "{}"
 
 # --- AYARLAR ---
 CONFIG_FILE = "ayarlar.json"
@@ -50,43 +71,40 @@ def get_excel_file():
     root = tk.Tk()
     root.withdraw()
     config = load_config()
-    last_file = config.get("last_file")
-
-    if last_file and os.path.exists(last_file):
-        if messagebox.askyesno("Dosya", f"Son dosya ile devam?\n{last_file}"):
-            return last_file
-            
-    file_path = filedialog.askopenfilename(title="Excel Seç", filetypes=[("Excel", "*.xlsx;*.xls")])
+    initial_dir = os.path.dirname(config.get("last_file", "")) if config.get("last_file") else "/"
+    
+    file_path = filedialog.askopenfilename(
+        title="Veri Dosyasını Seçin",
+        initialdir=initial_dir,
+        filetypes=[("Excel Dosyaları", "*.xlsx;*.xls")]
+    )
     if file_path:
         save_config(file_path)
-        return file_path
-    return None
+    return file_path
 
+# --- ANA İŞLEM ---
 def main():
-    target_file = get_excel_file()
-    if not target_file: return
+    file_path = get_excel_file()
+    if not file_path:
+        messagebox.showwarning("Uyarı", "Dosya seçilmedi, program kapatılıyor.")
+        sys.exit()
 
     try:
-        # Excel Okuma ve Temizleme
-        df_raw = pd.read_excel(target_file)
-        df = pd.DataFrame()
-        
-        # Sütun Eşleştirme (Excel'deki isim ne olursa olsun koda uydur)
-        column_map = {
-            'Danışman Adı': 'Danışman Adı',
+        df_raw = pd.read_excel(file_path)
+        required_cols = {
+            'Tarih': 'Tarih',
             'Model': 'Model',
+            'Danışman Adı': 'Danışman Adı',
             'Durum': 'Durum',
-            'Kapatılma Tarihi': 'Tarih',
-            'Kayıp Satış Nedeni': 'Kayıp Nedeni',
+            'Kayıp Nedeni': 'Kayıp Nedeni',
             'Lead Kaynağı': 'Lead Kaynağı'
         }
-        
-        for col_excel, col_code in column_map.items():
-            # Tam eşleşme ara, yoksa sütun adlarını temizleyip ara
+        df = pd.DataFrame()
+
+        for col_code, col_excel in required_cols.items():
             if col_excel in df_raw.columns:
                 df[col_code] = df_raw[col_excel].astype(str)
             else:
-                # Esnek arama (boşlukları silip bak)
                 found = False
                 for raw_col in df_raw.columns:
                     if raw_col.strip() == col_excel:
@@ -96,11 +114,9 @@ def main():
                 if not found:
                     df[col_code] = 'Belirtilmemiş'
         
-        # Temizlik
         df = df.replace(['nan', 'None', '', 'NaT'], 'Belirtilmemiş')
         json_data = df.to_json(orient='records')
 
-        # HTML Hazırlığı
         template_path = resource_path("tasarim.html")
         if not os.path.exists(template_path): template_path = "tasarim.html"
 
@@ -114,13 +130,14 @@ def main():
 
         with open("Satis_Raporu.html", "w", encoding="utf-8") as f:
             f.write(html_content)
-            
-        webbrowser.open("Satis_Raporu.html")
+
+        # ARTIK BROWSER'DA DEĞİL, UYGULAMA PENCERESİNDE AÇILIYOR!
+        api = Api() # Köprüyü kur
+        webview.create_window('Satış Analiz Paneli', 'Satis_Raporu.html', js_api=api, width=1280, height=800)
+        webview.start()
 
     except Exception as e:
-        root = tk.Tk()
-        root.withdraw()
-        messagebox.showerror("Hata", str(e))
+        messagebox.showerror("Hata", f"Beklenmeyen bir hata oluştu:\n{str(e)}")
 
 if __name__ == "__main__":
     main()
