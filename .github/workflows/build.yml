@@ -25,7 +25,7 @@ jobs:
     - name: Kutuphaneleri Yukle (Garantili Yontem)
       run: |
         python -m pip install --upgrade pip
-        pip install pandas openpyxl pyinstaller packaging matplotlib
+        pip install pandas openpyxl pyinstaller packaging matplotlib pywebview
 
     - name: Dosyalari Kontrol Et
       run: |
