@@ -33,7 +33,6 @@ def get_image_data(filename):
             pass
     return "https://via.placeholder.com/300x200?text=Gorsel+Yok"
 
-# --- YENİ API: ARTIK VERİYİ DE BURADAN GÜVENLE GÖNDERİYORUZ ---
 class Api:
     def __init__(self, veri_json):
         self.veri_json = veri_json
@@ -147,7 +146,6 @@ def main():
         with open(template_path, "r", encoding="utf-8") as f:
             html_content = f.read()
 
-        # HTML çökmelerini engellemek için veriyi boş bırakıyoruz (API'den çekeceğiz)
         html_content = html_content.replace("[[JSON_DATA]]", "[]")
         html_content = html_content.replace("[[LOGO_SRC]]", get_image_data("logo.webp"))
         html_content = html_content.replace("[[GRAFIK_SRC]]", get_image_data("grafik_resmi.png"))
@@ -171,18 +169,14 @@ def main():
         with open(temp_file, "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        # JSON VERİSİNİ API'YE TESLİM EDİYORUZ
         api = Api(json_data)
         window = webview.create_window('Satış Analiz Paneli', url=temp_file, js_api=api, width=1280, height=800)
 
-        # --- YENİ SİSTEM: PYTHON EKRANIN YÜKLENMESİNİ BEKLER VE VERİYİ ZORLA BASAR ---
+        # PYTHON EKRANIN YÜKLENMESİNİ BEKLER VE VERİYİ ZORLA BASAR
         def on_loaded():
             import base64
-            # Verileri kriptolayarak (Base64) JS'ye gönderiyoruz (Karakter hatası sıfırlanır)
             excel_b64 = base64.b64encode(api.veri_json.encode('utf-8')).decode('utf-8')
             ayarlar_b64 = base64.b64encode(api.load_ui_settings().encode('utf-8')).decode('utf-8')
-            
-            # JS içindeki 'sistemiBaslat' fonksiyonunu dışarıdan tetikliyoruz
             window.evaluate_js(f"sistemiBaslat('{excel_b64}', '{ayarlar_b64}');")
 
         window.events.loaded += on_loaded
