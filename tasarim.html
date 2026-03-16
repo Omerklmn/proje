@@ -2,16 +2,15 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yönetim Paneli - Satış Analiz</title>
+    <title>Yönetim Paneli - Ultimate Pro</title>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         body { background-color: #000; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow-x: hidden; }
-        
+
         /* ORTAK */
-        .btn-action { background: #3498db; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-left: 5px; font-weight: bold; transition: 0.2s;}
-        .btn-action:hover { filter: brightness(1.2); }
+        .btn-action { background: #3498db; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-left: 5px; font-weight: bold; }
         .btn-success { background: #27ae60; }
         .btn-danger { background: #e74c3c; }
         .btn-warning { background: #f39c12; color: black; }
@@ -32,10 +31,10 @@
         .flip-card-back { background-color: #000; transform: rotateY(180deg); overflow: hidden; }
         .flip-card-back img { width: 85%; height: 85%; object-fit: contain; }
 
-        /* SAYFALAR */
+        /* DASHBOARD */
         #dashboard-page, #simulation-page, #pareto-page, #funnel-page { display: none; padding: 20px; background-color: #0e1117; min-height: 100vh; }
         .dash-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00d4ff; padding-bottom: 10px; margin-bottom: 20px; }
-        
+
         /* FİLTRELER */
         .filter-container { display: flex; gap: 15px; background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; flex-wrap: wrap; position: relative; z-index: 1001; }
         .multi-select-box { position: relative; display: flex; flex-direction: column; width: 200px; }
@@ -47,50 +46,57 @@
         .checkbox-list label:hover { background: #333; }
         .select-all-label { font-weight: bold; color: #00d4ff; border-bottom: 2px solid #444 !important; margin-bottom: 5px; }
 
-        /* KPI */
         .kpi-container { display: flex; gap: 20px; margin-bottom: 20px; }
         .kpi-card { background: #1f1f1f; flex: 1; padding: 20px; border-radius: 10px; text-align: center; border-top: 4px solid #00d4ff; position: relative; }
         .kpi-val { font-size: 30px; font-weight: bold; display: block; margin-top: 5px; }
         .kpi-sub { font-size: 11px; color: #aaa; margin-top: 5px; display: block; }
-        
-        /* AI PANEL */
+
+        /* YAPAY ZEKA PANELİ */
         .ai-panel { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid #334155; border-radius: 10px; margin-bottom: 20px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         .ai-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 15px; margin-bottom: 15px; }
         .ai-title { font-weight: bold; font-size: 18px; color: #00d4ff; display: flex; align-items: center; gap: 10px; }
         .ai-content { font-size: 15px; line-height: 1.6; color: #e2e8f0; min-height: 60px; }
-        
-        /* CHARTS */
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; position: relative; z-index: 1; }
-        .chart-box { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #333; height: 400px; }
+        .ai-typing::after { content: '|'; animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
 
-        /* SİMÜLASYON */
+        .grid { display: grid; grid-template-columns: 1fr; gap: 30px; position: relative; z-index: 1; }
+        .chart-box { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #333; height: 500px; }
+
+        /* SİMÜLASYON STİLLERİ */
         .sim-container { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; margin-top: 20px; width: 100%; }
         .sim-step { width: 100%; max-width: 1000px; display: none; animation: fadeIn 0.5s; }
         .sim-step.active { display: block; }
         .sim-title { font-size: 28px; color: #00d4ff; text-align: center; margin-bottom: 30px; }
+
         .selection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
         .selection-card { background: #1f1f1f; border: 1px solid #333; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; transition: 0.3s; font-size: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100px; }
-        .selection-card:hover, .selection-card.selected { background: #333; border-color: #00d4ff; transform: translateY(-3px); }
+        .selection-card:hover { background: #333; border-color: #00d4ff; transform: translateY(-3px); }
         .selection-card i { font-size: 24px; margin-bottom: 10px; color: #aaa; }
+
         .result-box { background: #fff; color: #333; padding: 30px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
         .prob-score { font-size: 50px; font-weight: bold; color: #27ae60; }
+
         .what-if-panel { background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #444; margin-top: 20px; }
         .control-row { display: flex; gap: 20px; justify-content: center; margin-bottom: 15px; align-items: center; }
         .control-group { display: flex; flex-direction: column; width: 200px; }
         .control-group label { font-size: 12px; color: #aaa; margin-bottom: 5px; }
         .control-select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 5px; }
+
         .slider-row { display: flex; gap: 30px; justify-content: center; margin-top: 20px; }
         .slider-group { width: 200px; text-align: center; }
         .weight-slider { width: 100%; accent-color: #00d4ff; }
 
-        /* PARETO */
+        /* PARETO ANALİZİ TASARIMLARI */
         .insight-box { border-left: 5px solid #f39c12; background: rgba(243, 156, 18, 0.1); padding: 20px; border-radius: 0 8px 8px 0; margin-top: 20px; font-size: 15px; line-height: 1.6; color: #ddd; }
+        .insight-highlight { color: #f39c12; font-weight: bold; font-size: 16px; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* AYARLAR BUTONU & MODAL */
+        /* AYARLAR BUTONU */
         .floating-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 999; background: #00d4ff; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
         .floating-btn:hover { transform: scale(1.1); }
+
+        /* AYARLAR MODAL */
         #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; }
         .settings-content { background: #1a1a1a; width: 95%; max-width: 1100px; height: 85vh; border-radius: 15px; border: 1px solid #333; display: flex; overflow: hidden; }
         .settings-sidebar { width: 220px; background: #151515; border-right: 1px solid #333; padding: 20px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
@@ -102,23 +108,28 @@
         .scroll-list { flex: 1; overflow-y: auto; padding-right: 5px; background: #181818; border-radius: 5px; padding: 5px; margin-bottom: 10px; }
         .raw-item { padding: 8px; margin: 3px 0; background: #333; border-radius: 4px; cursor: pointer; font-size: 13px; }
         .raw-item.selected { background: #f39c12; color: white; }
+
         .group-container { margin-bottom: 15px; border: 1px solid #555; background: #2a2a2a; border-radius: 5px; overflow: hidden; }
         .group-header { padding: 10px; background: #333; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; border-bottom: 1px solid #444; }
         .group-content { padding: 8px; min-height: 40px; background: #222; display: flex; flex-wrap: wrap; gap: 5px; }
-        .group-tag { display: inline-flex; align-items: center; background: #00d4ff; color: black; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; cursor:pointer;}
+        .group-tag { display: inline-flex; align-items: center; background: #00d4ff; color: black; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+
         .hidden-item { opacity: 0.4; text-decoration: line-through; border-left: 3px solid red; background: #300 !important; color: #aaa !important; }
-        
-        /* Loading */
-        #loading-screen { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index:99999; flex-direction:column; align-items:center; justify-content:center; }
-        .spinner { border: 5px solid #333; border-top: 5px solid #00d4ff; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .tree-year-row { display: flex; align-items: center; background: #2a2a2a; padding: 5px; margin-top: 5px; border-radius: 4px; }
+        .tree-toggle { cursor: pointer; margin-right: 8px; width: 15px; text-align: center; color: #aaa; }
+        .tree-month-container { display: none; padding-left: 25px; border-left: 1px solid #444; margin-left: 7px; }
+        .tree-active .tree-month-container { display: block; }
+        .tree-active .tree-toggle { transform: rotate(90deg); color: white; }
     </style>
 </head>
 <body>
+    <div id="loading-screen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index:99999; flex-direction:column; align-items:center; justify-content:center;">
+        <div style="position:relative; width:150px; height:150px;">
+            <img src="gecis.png" style="position:absolute; bottom:0; left:0; width:100%; height:100%; object-fit:contain; opacity:0.15; filter: grayscale(100%);">
+            <img src="gecis.png" id="loading-fill-img" style="position:absolute; bottom:0; left:0; width:100%; height:100%; object-fit:contain; clip-path: inset(100% 0 0 0); transition: clip-path 1s cubic-bezier(0.25, 0.8, 0.25, 1);">
+        </div>
 
-    <div id="loading-screen">
-        <div class="spinner"></div>
-        <h3 style="color:#00d4ff; margin-top:20px;">Veriler Hazırlanıyor...</h3>
     </div>
 
     <div id="settings-btn" class="floating-btn hide-on-print" onclick="openSettings()">
@@ -134,19 +145,20 @@
                 <button class="cat-btn" onclick="setCategory('Durum')">📊 Durumlar</button>
                 <button class="cat-btn" onclick="setCategory('Kayıp Nedeni')">❌ Kayıp Nedenleri</button>
                 <button class="cat-btn" onclick="setCategory('Lead Kaynağı')">🔗 Lead Kaynakları</button>
-                
+
                 <h3 style="margin:15px 0 10px 0; color:#fff; border-top: 1px solid #333; padding-top: 15px;">Huni Ayarları</h3>
                 <button class="cat-btn" onclick="setCategory('Huni Aşaması')">🌪️ Huni Aşamaları</button>
-                
+
                 <div style="flex:1;"></div>
-                
+
                 <div style="margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; margin-bottom: 15px;">
-                    <label style="color:#aaa; font-size:12px; font-weight:bold;">Gemini API Anahtarı</label>
+                    <label style="color:#aaa; font-size:12px; font-weight:bold;">Gemini API Anahtarı (Flash)</label>
                     <input type="password" id="gemini-api-key" placeholder="AIzaSy..." style="width:90%; padding:8px; margin-top:5px; background:#222; border:1px solid #444; color:white; border-radius:4px;">
+                    <div style="font-size:10px; color:#f39c12; margin-top:5px;">*Ücretsiz anahtarı Google AI Studio'dan alabilirsiniz.</div>
                 </div>
 
                 <button class="cat-btn" style="background:#27ae60; color:white; text-align:center; margin-bottom:5px;" onclick="saveAndCloseSettings()">KAYDET VE ÇIK</button>
-                <button class="cat-btn" style="background:#e74c3c; color:white; text-align:center;" onclick="closeSettings()">KAPAT</button>
+                <button class="cat-btn" style="background:#e74c3c; color:white; text-align:center;" onclick="discardAndCloseSettings()">KAYDETMEDEN ÇIK</button>
             </div>
             <div class="settings-main">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -155,17 +167,19 @@
                 </div>
                 <div style="margin-bottom:10px;">
                     <button class="btn-action btn-warning" style="padding:8px 15px;" onclick="toggleHideSelected()">👁️ Seçiliyi Gizle/Göster</button>
+                    <span style="font-size:12px; color:#aaa; margin-left:10px;"> </span>
                 </div>
                 <div class="work-area">
                     <div class="panel-box">
-                        <div class="panel-title" style="color:#aaa; font-weight:bold; margin-bottom:10px;">1. Ham Veriler (Listeden Seç)</div>
+                        <div class="panel-title">1. Ham Veriler (Listeden Seç)</div>
                         <div class="scroll-list" id="raw-list"></div>
+                        <div style="font-size:11px; color:#aaa;">* Çoklu seçim için tıklayın</div>
                     </div>
                     <div style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
                         <i class="fas fa-chevron-right" style="font-size:24px; color:#555;"></i>
                     </div>
                     <div class="panel-box">
-                        <div class="panel-title" style="color:#aaa; font-weight:bold; margin-bottom:10px;">2. Gruplar (Tıklayıp Ekle/Çıkar)</div>
+                        <div class="panel-title">2. Gruplar</div>
                         <div class="scroll-list" id="group-list"></div>
                         <div style="border-top:1px solid #444; padding-top:10px; display:flex; gap:10px;">
                             <input type="text" id="new-group-name" placeholder="Yeni Grup Adı..." style="flex:1; padding:8px; border-radius:5px; border:none; background:#333; color:white;">
@@ -177,44 +191,31 @@
         </div>
     </div>
 
-    <div id="reset-confirm-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; align-items:center; justify-content:center;">
-        <div style="background:#1a1a1a; padding:30px; border-radius:10px; border:1px solid #e74c3c; width:400px; text-align:center;">
-            <i class="fas fa-exclamation-triangle" style="font-size:40px; color:#e74c3c; margin-bottom:15px;"></i>
-            <h3 style="color:#e74c3c; margin-top:0;">Ayarları Sıfırlamak Üzeresiniz!</h3>
-            <p style="color:#ddd; font-size:14px;">Tüm gruplamalarınız silinecektir. Onaylamak için <b>sıfırla</b> yazın:</p>
-            <input type="text" id="reset-confirm-input" placeholder="sıfırla" style="width:60%; padding:10px; margin-bottom:20px; text-align:center;">
-            <div style="display:flex; justify-content:center; gap:10px;">
-                <button class="btn-action" style="background:#555; padding:10px 20px;" onclick="closeResetConfirm()">İPTAL</button>
-                <button class="btn-action btn-danger" style="padding:10px 20px;" onclick="executeReset()">SIFIRLA</button>
-            </div>
-        </div>
-    </div>
-
     <div id="home-page">
-        <div class="header"><img src="[[LOGO_SRC]]" alt="Logo"></div>
+        <div class="header"><img src="[[LOGO_SRC]]"></div>
         <div class="card-container">
-            <div class="flip-card" onclick="openPage('dashboard-page')">
+            <div class="flip-card" onclick="openDashboard()">
                 <div class="flip-card-inner">
                     <div class="flip-card-front"><h2>GRAFİKLER</h2></div>
-                    <div class="flip-card-back"><img src="[[GRAFIK_SRC]]" onerror="this.style.display='none'"></div>
+                    <div class="flip-card-back"><img src="[[GRAFIK_SRC]]" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3093/3093359.png'"></div>
                 </div>
             </div>
-            <div class="flip-card" onclick="openPage('simulation-page')">
+            <div class="flip-card" onclick="openSimulation()">
                 <div class="flip-card-inner">
                     <div class="flip-card-front"><h2>SATIŞ<br>SİMÜLASYONU</h2></div>
-                    <div class="flip-card-back"><img src="[[SIM_SRC]]" onerror="this.style.display='none'"></div>
+                    <div class="flip-card-back"><img src="[[SIM_SRC]]" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1006/1006363.png'"></div>
                 </div>
             </div>
-            <div class="flip-card" onclick="openPage('pareto-page')">
+            <div class="flip-card" onclick="openPareto()">
                 <div class="flip-card-inner">
                     <div class="flip-card-front"><h2>DARBOĞAZ<br>ANALİZİ</h2></div>
-                    <div class="flip-card-back"><img src="[[GRAFIK_SRC]]" onerror="this.style.display='none'"></div>
+                    <div class="flip-card-back"><img src="[[GRAFIK_SRC]]" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3093/3093359.png'"></div>
                 </div>
             </div>
-            <div class="flip-card" onclick="openPage('funnel-page')">
+            <div class="flip-card" onclick="openFunnel()">
                 <div class="flip-card-inner">
                     <div class="flip-card-front"><h2>SATIŞ<br>HUNİSİ</h2></div>
-                    <div class="flip-card-back"><img src="[[GRAFIK_SRC]]" onerror="this.style.display='none'"></div>
+                    <div class="flip-card-back"><img src="[[GRAFIK_SRC]]" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3093/3093359.png'"></div>
                 </div>
             </div>
         </div>
@@ -222,11 +223,13 @@
 
     <div id="dashboard-page">
         <div class="dash-header">
-            <button class="btn-back hide-on-print" onclick="openPage('home-page')">← ANA MENÜ</button>
+            <button class="btn-back hide-on-print" onclick="openHome()">← ANA MENÜ</button>
             <h2 style="color:#00d4ff; margin:0;">📈 Analiz Paneli</h2>
-            <button class="btn-action btn-success hide-on-print" style="padding:10px 20px;" onclick="exportPDF()"><i class="fas fa-file-pdf"></i> İndir</button>
+            <button class="btn-action btn-success hide-on-print" style="padding:10px 20px; font-size:14px; border-radius:5px;" onclick="exportPDF()">
+                <i class="fas fa-file-pdf"></i> Raporu İndir
+            </button>
         </div>
-        
+
         <div class="filter-container hide-on-print">
             <div class="multi-select-box">
                 <label style="font-size:11px; color:#aaa;">👤 DANIŞMAN</label>
@@ -246,23 +249,38 @@
         </div>
 
         <div class="kpi-container">
-            <div class="kpi-card">GÖRÜŞME <span id="k-top" class="kpi-val">0</span><span class="kpi-sub">Filtrelere Göre</span></div>
-            <div class="kpi-card" style="border-top-color:#2ecc71">SATIŞ <span id="k-sat" class="kpi-val" style="color:#2ecc71">0</span><span class="kpi-sub">Filtrelere Göre</span></div>
-            <div class="kpi-card" style="border-top-color:#f1c40f">BAŞARI ORANI <span id="k-ora" class="kpi-val" style="color:#f1c40f">%0</span><span class="kpi-sub">Trend Ortalaması</span></div>
+            <div class="kpi-card">
+                GÖRÜŞME <span id="k-top" class="kpi-val">0</span>
+                <span class="kpi-sub">Seçilen Filtrelere Göre</span>
+            </div>
+            <div class="kpi-card" style="border-top-color:#2ecc71">
+                SATIŞ <span id="k-sat" class="kpi-val" style="color:#2ecc71">0</span>
+                <span class="kpi-sub">Seçilen Filtrelere Göre</span>
+            </div>
+            <div class="kpi-card" style="border-top-color:#f1c40f">
+                BAŞARI ORANI <span id="k-ora" class="kpi-val" style="color:#f1c40f">%0</span>
+                <span class="kpi-sub">(Genel Ortalamaya Göre Trend)</span>
+            </div>
         </div>
 
-        <div class="ai-panel hide-on-print">
+        <div class="ai-panel">
             <div class="ai-header">
                 <div class="ai-title"><i class="fas fa-robot"></i> Yapay Zeka Asistanı</div>
-                <div>
-                    <button class="btn-action" style="background:#8e44ad;" onclick="aiYorumla()"><i class="fas fa-chart-line"></i> Yorumla</button>
-                    <button class="btn-action" style="background:#f39c12; color:black;" onclick="aiOneriVer()"><i class="fas fa-lightbulb"></i> Öneri Ver</button>
+                <div class="ai-btn-group hide-on-print">
+                    <button class="btn-action" style="background:#8e44ad; padding:8px 15px; border-radius:5px; font-size:13px;" onclick="aiYorumla()">
+                        <i class="fas fa-chart-line"></i> Durumu Yorumla
+                    </button>
+                    <button class="btn-action" style="background:#f39c12; color:black; padding:8px 15px; border-radius:5px; font-size:13px;" onclick="aiOneriVer()">
+                        <i class="fas fa-lightbulb"></i> Öneri Ver
+                    </button>
                 </div>
             </div>
-            <div class="ai-content" id="ai-response">Analiz bekliyor...</div>
-            <div style="margin-top: 15px; display: flex; gap: 10px;">
-                <input type="text" id="ai-custom-prompt" placeholder="Yapay zekaya soru sorun..." style="flex: 1; padding: 10px; border-radius: 5px; background: #0f172a; color: white;">
-                <button class="btn-action btn-success" onclick="aiOzelSoru()">Gönder</button>
+            <div class="ai-content" id="ai-response">
+                Analiz yapmak için yukarıdaki "Durumu Yorumla" veya "Öneri Ver" butonlarını kullanabilirsiniz...
+            </div>
+            <div class="hide-on-print" style="margin-top: 15px; display: flex; gap: 10px; border-top: 1px solid #334155; padding-top: 15px;">
+                <input type="text" id="ai-custom-prompt" placeholder="Yapay zekaya bu grafiklerle ilgili özel bir soru sorun..." style="flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #334155; background: #0f172a; color: white; font-size:14px;">
+                <button class="btn-action btn-success" style="padding: 10px 20px; font-size:14px;" onclick="aiOzelSoru()">Gönder</button>
             </div>
         </div>
 
@@ -276,668 +294,780 @@
 
     <div id="pareto-page">
         <div class="dash-header">
-            <button class="btn-back" onclick="openPage('home-page')">← ANA MENÜ</button>
-            <h2 style="color:#f39c12; margin:0;"><i class="fas fa-filter"></i> Darboğaz (Pareto) Analizi</h2>
+            <button class="btn-back" onclick="openHome()">← ANA MENÜ</button>
+            <h2 style="color:#f39c12; margin:0;"><i class="fas fa-filter"></i> 80/20 Darboğaz (Pareto) Analizi</h2>
             <div></div>
         </div>
-        <div style="background:#1e1e1e; padding:20px; border-radius:12px; margin-bottom:20px;">
-            <select id="pareto-dimension" onchange="renderPareto()" style="background:#333; color:white; padding:10px; border-radius:5px; width:100%; max-width:400px;">
-                <option value="Kayıp Nedeni">Kayıp Nedenleri</option>
-                <option value="Lead Kaynağı">Lead Kaynağı</option>
-                <option value="Model">Model</option>
-                <option value="Danışman Adı">Danışman</option>
+
+        <div style="background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <label style="color:#aaa; font-weight:bold; font-size: 14px;">Analiz Boyutu Seçin:</label>
+            <select id="pareto-dimension" onchange="renderPareto()" style="background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px; outline: none; flex: 1; max-width: 400px; font-size: 14px;">
+                <option value="Kayıp Nedeni">Kayıp Nedenleri (Kayıplar en çok nedenden yaşanıyor?)</option>
+                <option value="Lead Kaynağı">Lead Kaynağı (Kayıplar en çok hangi kanaldan geliyor?)</option>
+                <option value="Model">Model (En çok hangi modelde satış kaçırıyoruz?)</option>
+                <option value="Danışman Adı">Danışman (Kayıpların sayısal yükü kimin üzerinde?)</option>
             </select>
         </div>
-        <div id="pareto-chart" style="width:100%; height:450px; background:#1e1e1e; border-radius:12px;"></div>
+
+        <div id="pareto-chart" style="width:100%; height:450px; background:#1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 10px;"></div>
+
         <div id="pareto-insight" class="insight-box"></div>
     </div>
 
     <div id="funnel-page">
         <div class="dash-header">
-            <button class="btn-back" onclick="openPage('home-page')">← ANA MENÜ</button>
-            <h2 style="color:#9b59b6; margin:0;"><i class="fas fa-filter"></i> Satış Dönüşüm Hunisi</h2>
+            <button class="btn-back" onclick="openHome()">← ANA MENÜ</button>
+            <h2 style="color:#9b59b6; margin:0;"><i class="fas fa-filter"></i> Satış Dönüşüm Hunisi (Funnel)</h2>
             <div></div>
         </div>
-        <div id="funnelChart" style="width:100%; height:550px; background:#1e1e1e; border-radius:12px;"></div>
+        <p style="text-align:center; color:#aaa; font-size:14px; margin-bottom: 20px;">* Sağlıklı veri için "Ayarlar" sekmesinden Kayıp Nedenlerini Huni Aşamalarıyla eşleştirin.</p>
+        <div id="funnelChart" style="width:100%; height:550px; background:#1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></div>
     </div>
 
     <div id="simulation-page">
         <div class="dash-header">
-            <button class="btn-back" onclick="openPage('home-page')">← ANA MENÜ</button>
-            <h2 style="color:#00d4ff; margin:0;">Satış Simülasyonu</h2>
+            <button class="btn-back" onclick="openHome()">← ANA MENÜ</button>
+            <h2 style="color:#00d4ff; margin:0; text-align:center;">Satış Simülasyonu</h2>
+            <h2 style="color:#00d4ff; margin:0; position:absolute; left:50%; transform:translateX(-50%);">Satış Simülasyonu</h2>
             <div></div>
         </div>
+
         <div class="sim-container">
             <div id="sim-step-1" class="sim-step active">
-                <div class="sim-title">Danışman Seçin</div>
+                <div class="sim-title">Lütfen bir Danışman seçin</div>
                 <div class="selection-grid" id="grid-consultant"></div>
             </div>
             <div id="sim-step-2" class="sim-step">
-                <div class="sim-title">Model Seçin</div>
+                <div class="sim-title">Lütfen bir Model seçin (Gruplanmış)</div>
                 <div class="selection-grid" id="grid-model"></div>
                 <button class="btn-back" onclick="goToStep(1)" style="margin-top:20px;">Geri Dön</button>
             </div>
             <div id="sim-step-3" class="sim-step">
-                <div class="sim-title">Ay Seçin</div>
+                <div class="sim-title">Lütfen bir Ay seçin</div>
                 <div class="selection-grid" id="grid-month"></div>
                 <button class="btn-back" onclick="goToStep(2)" style="margin-top:20px;">Geri Dön</button>
             </div>
             <div id="sim-step-4" class="sim-step">
-                <div class="sim-title">Simülasyon Sonucu</div>
+                <div class="sim-title">Simülasyon Sonucu & Analiz</div>
                 <div class="result-box">
-                    <div style="color:#aaa;">TAHMİNİ BAŞARI ORANI</div>
+                    <div style="font-size:14px; color:#aaa;">TAHMİNİ BAŞARI ORANI</div>
                     <div class="prob-score" id="result-score">%0</div>
+                    <div id="result-detail" style="margin-top:10px;"></div>
                 </div>
                 <div class="what-if-panel">
-                    <h3>Senaryoyu Değiştir</h3>
+                    <h3 style="margin-top:0;">Senaryoyu Değiştir (What-If)</h3>
                     <div class="control-row">
-                        <select id="wi-cons" class="control-select" onchange="recalculateSim()"></select>
-                        <select id="wi-model" class="control-select" onchange="recalculateSim()"></select>
-                        <select id="wi-month" class="control-select" onchange="recalculateSim()"></select>
+                        <div class="control-group"><label>Danışman</label><select id="wi-cons" class="control-select" onchange="recalculateSim()"></select></div>
+                        <div class="control-group"><label>Model</label><select id="wi-model" class="control-select" onchange="recalculateSim()"></select></div>
+                        <div class="control-group"><label>Ay</label><select id="wi-month" class="control-select" onchange="recalculateSim()"></select></div>
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-group"><label>Danışman Etkisi <span id="val-cons" style="color:#00d4ff; font-weight:bold;">%50</span></label><input type="range" id="w-cons" class="weight-slider" value="50" oninput="recalculateSim()"></div>
+                        <div class="slider-group"><label>Model Etkisi <span id="val-model" style="color:#00d4ff; font-weight:bold;">%30</span></label><input type="range" id="w-model" class="weight-slider" value="30" oninput="recalculateSim()"></div>
+                        <div class="slider-group"><label>Zaman Etkisi <span id="val-month" style="color:#00d4ff; font-weight:bold;">%20</span></label><input type="range" id="w-month" class="weight-slider" value="20" oninput="recalculateSim()"></div>
                     </div>
                 </div>
+
+                <div class="ai-panel" style="margin-top: 20px;">
+                    <div class="ai-header">
+                        <div class="ai-title"><i class="fas fa-robot"></i> Simülasyon Asistanı</div>
+                        <button class="btn-action" style="background:#8e44ad; padding:8px 15px; border-radius:5px; font-size:13px;" onclick="aiSimYorumla()">
+                            <i class="fas fa-magic"></i> Bu Senaryoyu Yorumla
+                        </button>
+                    </div>
+                    <div class="ai-content" id="sim-ai-response" style="font-size:14px;">
+                        Senaryoyu yorumlatmak için yukarıdaki tuşa basın veya aşağıdan özel bir soru sorun...
+                    </div>
+                    <div style="margin-top: 15px; display: flex; gap: 10px; border-top: 1px solid #334155; padding-top: 15px;">
+                        <input type="text" id="sim-custom-prompt" placeholder="Bu senaryoyu nasıl geliştirebilirim? vb. sorun..." style="flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #334155; background: #0f172a; color: white;">
+                        <button class="btn-action btn-success" style="padding: 10px 20px;" onclick="aiSimOzelSoru()">Gönder</button>
+                    </div>
+                </div>
+
                 <button class="btn-back" onclick="resetSim()" style="margin-top:20px; background:#34495e;">Yeni Simülasyon</button>
             </div>
         </div>
     </div>
-
+<div id="reset-confirm-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; align-items:center; justify-content:center;">
+        <div style="background:#1a1a1a; padding:30px; border-radius:10px; border:1px solid #e74c3c; width:400px; text-align:center; box-shadow: 0 0 20px rgba(231, 76, 60, 0.4);">
+            <i class="fas fa-exclamation-triangle" style="font-size:40px; color:#e74c3c; margin-bottom:15px;"></i>
+            <h3 style="color:#e74c3c; margin-top:0;">Ayarları Sıfırlamak Üzeresiniz!</h3>
+            <p style="color:#ddd; font-size:14px;">Tüm gruplamalarınız, huni eşleştirmeleriniz ve gizli verileriniz silinip fabrika ayarlarına dönecektir. <b>Bu işlem geri alınamaz.</b></p>
+            <p style="color:#aaa; font-size:13px; margin-top:20px;">Onaylamak için kutuya <b>sıfırla</b> yazın:</p>
+            <input type="text" id="reset-confirm-input" placeholder="sıfırla" style="width:60%; padding:10px; margin-bottom:20px; background:#333; color:white; border:1px solid #555; border-radius:5px; text-align:center; font-weight:bold; font-size:16px;">
+            <div style="display:flex; justify-content:center; gap:10px;">
+                <button class="btn-action" style="background:#555; padding:10px 20px; font-size:14px;" onclick="closeResetConfirm()">İPTAL</button>
+                <button class="btn-action btn-danger" style="padding:10px 20px; font-size:14px;" onclick="executeReset()">SIFIRLA</button>
+            </div>
+        </div>
+    </div>
     <script>
-        // --- 1. SİSTEM DEĞİŞKENLERİ ---
-        let rawData = []; 
-        let filteredData = [];
-        let globalGroups = { 
-            "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {},
-            "Huni Aşaması": { "1. İletişim / Filtreleme": [], "2. Ürün ve İhtiyaç": [], "3. Teklif ve Finansman": [] } 
-        }; 
-        let hiddenItems = [];
-        let verilerHazir = false;
-        let selectedRawItems = [];
-        let activeCategory = 'Model';
-        let activeFilters = { 'Danışman Adı': [], 'Model': [], 'Tarih': [] };
+        // GLOBAL DEĞİŞKENLER
+        let rawData = [[JSON_DATA]];
+        let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
 
-        let simSelections = { cons: '', model: '', month: '' };
+        // --- Huni Gruplarının Otomatik Olarak Ayarlara Eklenmesi ---
+        if (!globalGroups["Huni Aşaması"]) {
+            globalGroups["Huni Aşaması"] = { 
+                "1. İletişim / Filtreleme": [], 
+                "2. Ürün ve İhtiyaç": [], 
+                "3. Teklif ve Finansman": [] 
+            };
+        }
 
-        // --- 2. PYTHON VERİ KÖPRÜSÜ (ENJEKSİYON) ---
-        function sistemiBaslat(b64_excel, b64_settings) {
-            try {
-                let excelJson = decodeURIComponent(escape(atob(b64_excel)));
-                let settingsJson = decodeURIComponent(escape(atob(b64_settings)));
-                
-                if (excelJson && excelJson !== "[]") {
-                    let veri = JSON.parse(excelJson);
-                    rawData.length = 0; 
-                    veri.forEach(item => {
-                        // Tarih formatını (YYYY-MM) düzenle
-                        if(item['Tarih'] && item['Tarih'] !== 'Belirtilmemiş') {
-                            item['TarihYilAy'] = String(item['Tarih']).substring(0,7);
-                        } else {
-                            item['TarihYilAy'] = 'Bilinmiyor';
-                        }
-                        rawData.push(item);
-                    });
+        let hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')) || [];
+        let cleanData = [];
+        let currentFilteredData = []; // Yapay Zeka için filtrelenmiş veriyi tutar
+        const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        let simSelections = {}; // Simülasyon hafızası düzeltildi!
+
+        window.onclick = function(event) {
+            if (!event.target.matches('.select-btn')) {
+                var dropdowns = document.getElementsByClassName("checkbox-list");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) openDropdown.classList.remove('show');
                 }
-
-                if (settingsJson && settingsJson !== "{}" && settingsJson !== "null") {
-                    let data = JSON.parse(settingsJson);
-                    if(data.groups) globalGroups = data.groups;
-                    if(data.hidden) hiddenItems = data.hidden;
-                    if(data.apiKey) {
-                        let keyInput = document.getElementById('gemini-api-key');
-                        if(keyInput) keyInput.value = data.apiKey;
-                    }
-                }
-
-                verilerHazir = true;
-                processData(); // Verileri filtrele ve hazırla
-                initFilters(); // Filtre kutularını doldur
-                
-            } catch(e) {
-                console.error("Sistem Başlatma Hatası: ", e);
-                alert("Veriler yüklenirken hata oluştu!");
             }
         }
-
-        // --- 3. VERİ İŞLEME VE GRUPLAMA ---
-        function getMappedValue(category, rawValue) {
-            if(!globalGroups[category]) return rawValue;
-            for(let groupName in globalGroups[category]) {
-                if(globalGroups[category][groupName].includes(rawValue)) return groupName;
-            }
-            return rawValue;
+        function toggleDropdown(id) {
+            var dropdowns = document.getElementsByClassName("checkbox-list");
+            for (var i = 0; i < dropdowns.length; i++) { if (dropdowns[i].id !== id) dropdowns[i].classList.remove('show'); }
+            document.getElementById(id).classList.toggle("show");
+            event.stopPropagation();
         }
 
-        function isHidden(category, rawValue) {
-            let mapped = getMappedValue(category, rawValue);
-            return hiddenItems.includes(mapped) || hiddenItems.includes(rawValue);
-        }
+        // --- PDF İNDİRME FONKSİYONU ---
+        function exportPDF() {
+            // Butonları ve ayar çarkını gizle
+            document.querySelectorAll('.hide-on-print').forEach(el => el.style.display = 'none');
 
-        function processData() {
-            filteredData = rawData.filter(item => {
-                // 1. Gizli öğeleri filtrele
-                if(isHidden('Model', item['Model'])) return false;
-                if(isHidden('Danışman Adı', item['Danışman Adı'])) return false;
-                if(isHidden('Kayıp Nedeni', item['Kayıp Nedeni'])) return false;
-                if(isHidden('Lead Kaynağı', item['Lead Kaynağı'])) return false;
+            const element = document.getElementById('dashboard-page');
+            const opt = {
+                margin:       10,
+                filename:     'Satis_Analiz_Raporu.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, backgroundColor: '#0e1117' },
+                jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
+            };
 
-                // 2. Kullanıcı Filtrelerini uygula
-                let mappedDanisman = getMappedValue('Danışman Adı', item['Danışman Adı']);
-                let mappedModel = getMappedValue('Model', item['Model']);
-                let mappedTarih = item['TarihYilAy'];
-
-                if(activeFilters['Danışman Adı'].length > 0 && !activeFilters['Danışman Adı'].includes(mappedDanisman)) return false;
-                if(activeFilters['Model'].length > 0 && !activeFilters['Model'].includes(mappedModel)) return false;
-                if(activeFilters['Tarih'].length > 0 && !activeFilters['Tarih'].includes(mappedTarih)) return false;
-
-                return true;
+            html2pdf().set(opt).from(element).save().then(() => {
+                // İşlem bitince butonları geri getir
+                document.querySelectorAll('.hide-on-print').forEach(el => el.style.display = '');
             });
         }
 
-        // --- 4. SAYFA (MENÜ) YÖNETİMİ ---
-        function openPage(pageId) {
-            if(!verilerHazir && pageId !== 'home-page') {
-                alert("Veriler henüz yüklenmedi, lütfen bekleyin.");
+        // --- YAPAY ZEKA FONKSİYONLARI ---
+        function typeWriter(id, txt) {
+            let el = document.getElementById(id);
+            el.innerHTML = "";
+            el.classList.add("ai-typing");
+            let i = 0;
+            function type() {
+                if(i < txt.length) {
+                    el.innerHTML += txt.charAt(i);
+                    i++;
+                    setTimeout(type, 20); // Yazma hızı
+                } else {
+                    el.classList.remove("ai-typing");
+                }
+            }
+            type();
+        }
+
+        async function callGemini(prompt, targetElementId) {
+            const apiKey = localStorage.getItem('geminiApiKey');
+            const el = document.getElementById(targetElementId);
+
+            if(!apiKey) {
+                return typeWriter(targetElementId, "⚠️ Lütfen önce Ayarlar menüsünden Google Gemini API anahtarınızı girin.");
+            }
+
+            el.innerHTML = "<span class='ai-typing' style='color:#f39c12;'>Gemini Flash Analiz Ediyor...</span>";
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                const data = await response.json();
+                if(data.error) throw new Error(data.error.message);
+                const answer = data.candidates[0].content.parts[0].text;
+                typeWriter(targetElementId, "🤖 " + answer.replace(/\*/g, ''));
+
+            } catch (error) {
+                typeWriter(targetElementId, "❌ Hata oluştu: API Anahtarınızı kontrol edin. Detay: " + error.message);
+            }
+        }
+
+        function getVeriOzeti() {
+            if(!currentFilteredData || currentFilteredData.length === 0) return "Veri yok.";
+            let nTot = currentFilteredData.length;
+            let nSat = currentFilteredData.filter(d=>d.Durum==="Satış").length;
+
+            let modelStats = {};
+            let danismanStats = {};
+            let kayipStats = {};
+
+            currentFilteredData.forEach(d => {
+                let m = d["Model"] || "Bilinmiyor";
+                let c = d["Danışman Adı"] || "Bilinmiyor";
+                let k = d["Kayıp Nedeni"];
+                let isSold = d["Durum"] === "Satış";
+
+                if(!modelStats[m]) modelStats[m] = { gorusme: 0, satis: 0 };
+                modelStats[m].gorusme++;
+                if(isSold) modelStats[m].satis++;
+
+                if(!danismanStats[c]) danismanStats[c] = { gorusme: 0, satis: 0 };
+                danismanStats[c].gorusme++;
+                if(isSold) danismanStats[c].satis++;
+
+                if(!isSold && k && k !== "Belirtilmemiş") {
+                    if(!kayipStats[k]) kayipStats[k] = 0;
+                    kayipStats[k]++;
+                }
+            });
+
+            return JSON.stringify({
+                "Genel Ozet": { "Toplam Gorusme": nTot, "Toplam Satis": nSat },
+                "Danismanlarin Satis Durumu": danismanStats,
+                "Modellerin Satis Durumu": modelStats,
+                "Musteri Kayip Nedenleri": kayipStats
+            });
+        }
+
+        function aiYorumla() {
+            let ozet = getVeriOzeti();
+            if(ozet === "Veri yok.") return typeWriter("ai-response", "Analiz edilecek veri bulunamadı.");
+            let prompt = `Sen uzman bir otomotiv satış yöneticisisin. Karşında yöneticin Aykut Bey var, ona her zaman saygıyla 'Aykut Bey' diye hitap et. Şu anki filtrelenmiş verilerin detaylı matematiksel özeti şudur: ${ozet} Lütfen Aykut Bey'e bu durumu maksimum 3 cümleyle profesyonelce yorumla.`;
+            callGemini(prompt, "ai-response");
+        }
+
+        function aiOneriVer() {
+            let ozet = getVeriOzeti();
+            if(ozet === "Veri yok.") return typeWriter("ai-response", "Veri yok, öneri üretilemiyor.");
+            let prompt = `Sen profesyonel bir satış stratejistisin. Yöneticin Aykut Bey'e hitap ederek yaz. Şu anki detaylı veri özeti: ${ozet} Bu verilere bakarak Aykut Bey'e durumu toparlaması için çok stratejik tek bir taktik ver. Maksimum 3 cümle olsun.`;
+            callGemini(prompt, "ai-response");
+        }
+
+        function aiOzelSoru() {
+            let soru = document.getElementById("ai-custom-prompt").value.trim();
+            if(!soru) return;
+            let ozet = getVeriOzeti();
+            let prompt = `Sen profesyonel bir veri asistanısın. Yöneticin Aykut Bey'e cevap veriyorsun. Verilerin röntgeni: ${ozet}. Soru: "${soru}". Sadece sana verdiğim bu veriye bakarak analitik bir cevap ver.`;
+            callGemini(prompt, "ai-response");
+            document.getElementById("ai-custom-prompt").value = "";
+        }
+
+        function getSimContext() {
+            let c = document.getElementById('wi-cons').value;
+            let m = document.getElementById('wi-model').value;
+            let mo = document.getElementById('wi-month').value;
+            let final = document.getElementById('result-score').innerText;
+            return `Danışman: ${c}, Model: ${m}, Ay: ${mo}. Sistemin hesapladığı Başarı İhtimali: ${final}.`;
+        }
+
+        function aiSimYorumla() {
+            let context = getSimContext();
+            let prompt = `Sen bir otomotiv satış asistanısın. Yöneticin Aykut Bey'e hitap et. Senaryo: ${context} Bu senaryonun güçlü ve zayıf yanını 2-3 cümleyle özetle.`;
+            callGemini(prompt, "sim-ai-response");
+        }
+
+        function aiSimOzelSoru() {
+            let soru = document.getElementById("sim-custom-prompt").value.trim();
+            if(!soru) return;
+            let context = getSimContext();
+            let prompt = `Sen bir veri asistanısın. Yöneticin Aykut Bey'e cevap ver. Senaryo: ${context}. Soru: "${soru}".`;
+            callGemini(prompt, "sim-ai-response");
+            document.getElementById("sim-custom-prompt").value = "";
+        }
+
+        // --- VERİ İŞLEME VE FİLTRELER ---
+        function processData() {
+            const availableModels = new Set(rawData.map(d => d["Model"]));
+            for(let gName in globalGroups["Model"]) {
+                globalGroups["Model"][gName] = globalGroups["Model"][gName].filter(m => availableModels.has(m));
+            }
+
+            cleanData = rawData.filter(d => {
+                const keysToCheck = ["Model", "Danışman Adı", "Durum", "Kayıp Nedeni", "Lead Kaynağı"];
+                for(let key of keysToCheck) {
+                    if(d[key] && hiddenItems.includes(d[key].toString().trim())) return false;
+                }
+                return true;
+            }).map(d => {
+                let row = {...d};
+                for (let cat in globalGroups) {
+                    if (globalGroups[cat] && cat !== "Huni Aşaması") { // Huni Aşaması veriyi manipüle etmez
+                        for (let gName in globalGroups[cat]) {
+                            if (globalGroups[cat][gName].includes(d[cat])) {
+                                row[cat] = gName; 
+                                break;
+                            }
+                        }
+                    }
+                }
+                let p = parseDate(d["Tarih"]);
+                row["_Year"] = p.y; row["_Month"] = p.m; row["_MonthIdx"] = p.idx;
+                return row;
+            });
+        }
+
+        function parseDate(dateStr) {
+            if(!dateStr || dateStr === "Belirtilmemiş" || dateStr === "nan") return { y: "Diğer", m: "Belirtilmemiş", idx: 99 };
+            let d = new Date(dateStr);
+            if(isNaN(d.getTime())) return { y: "Diğer", m: "Belirtilmemiş", idx: 99 };
+            return { y: d.getFullYear().toString(), m: monthNames[d.getMonth()], idx: d.getMonth() };
+        }
+
+        function showLoading(callback) {
+            const loader = document.getElementById('loading-screen');
+            const fillImg = document.getElementById('loading-fill-img');
+            loader.style.display = 'flex';
+            fillImg.style.clipPath = 'inset(100% 0 0 0)';
+            setTimeout(() => { fillImg.style.clipPath = 'inset(0 0 0 0)'; }, 50);
+            setTimeout(() => { loader.style.display = 'none'; callback(); }, 1050); 
+        }
+
+        // --- SAYFA AÇILIŞLARI ---
+        function openDashboard() {
+            if(rawData.length === 0) { alert("Veri yok!"); return; }
+            showLoading(() => {
+                document.getElementById('home-page').style.display = 'none';
+                document.getElementById('simulation-page').style.display = 'none';
+                document.getElementById('pareto-page').style.display = 'none';
+                document.getElementById('funnel-page').style.display = 'none';
+                document.getElementById('dashboard-page').style.display = 'block';
+                processData(); initFilters(); updateDash();
+            });
+        }
+
+        function openSimulation() {
+            if(rawData.length===0) return;
+            processData(); 
+            if(cleanData.length === 0) { alert("Veri yok veya hepsi gizlenmiş!"); return; }
+            showLoading(() => {
+                document.getElementById('home-page').style.display = 'none';
+                document.getElementById('dashboard-page').style.display = 'none';
+                document.getElementById('pareto-page').style.display = 'none';
+                document.getElementById('funnel-page').style.display = 'none';
+                document.getElementById('simulation-page').style.display = 'block';
+                goToStep(1);
+            });
+        }
+
+        // --- PARETO ANALİZİ MOTORU ---
+        function openPareto() {
+            if(rawData.length === 0) { alert("Veri yok!"); return; }
+            processData(); 
+            showLoading(() => {
+                document.getElementById('home-page').style.display = 'none';
+                document.getElementById('dashboard-page').style.display = 'none';
+                document.getElementById('simulation-page').style.display = 'none';
+                document.getElementById('funnel-page').style.display = 'none';
+                document.getElementById('pareto-page').style.display = 'block';
+                renderPareto();
+            });
+        }
+
+        function renderPareto() {
+            const dimension = document.getElementById('pareto-dimension').value;
+            // DÜZELTİLDİ: Excelde satıs dısında her ne yazıyorsa kayıp sayacak.
+            const lossData = cleanData.filter(row => row['Durum'] && row['Durum'].toString().trim() !== 'Satış');
+
+            if (lossData.length === 0) {
+                document.getElementById('pareto-chart').innerHTML = "<h3 style='color:#888; text-align:center; padding-top:180px;'>Yeterli kayıp verisi bulunamadı.</h3>";
+                document.getElementById('pareto-insight').innerHTML = "";
                 return;
             }
 
-            document.getElementById('home-page').style.display = 'none';
-            document.getElementById('dashboard-page').style.display = 'none';
-            document.getElementById('pareto-page').style.display = 'none';
-            document.getElementById('funnel-page').style.display = 'none';
-            document.getElementById('simulation-page').style.display = 'none';
-
-            document.getElementById(pageId).style.display = 'block';
-
-            if(pageId === 'dashboard-page') {
-                processData();
-                setTimeout(() => drawCharts(), 100);
-            } else if(pageId === 'pareto-page') {
-                setTimeout(() => renderPareto(), 100);
-            } else if(pageId === 'funnel-page') {
-                setTimeout(() => renderFunnel(), 100);
-            } else if(pageId === 'simulation-page') {
-                initSimulation();
-            }
-        }
-
-        // --- 5. FİLTRE SİSTEMİ ---
-        function toggleDropdown(id) {
-            document.getElementById(id).classList.toggle('show');
-        }
-
-        window.onclick = function(event) {
-            if (!event.target.matches('.select-btn') && !event.target.closest('.checkbox-list')) {
-                let dropdowns = document.getElementsByClassName("checkbox-list");
-                for (let i = 0; i < dropdowns.length; i++) {
-                    dropdowns[i].classList.remove('show');
-                }
-            }
-        }
-
-        function initFilters() {
-            let uniqueDanismanlar = new Set();
-            let uniqueModeller = new Set();
-            let uniqueTarihler = new Set();
-
-            rawData.forEach(item => {
-                if(!isHidden('Danışman Adı', item['Danışman Adı'])) uniqueDanismanlar.add(getMappedValue('Danışman Adı', item['Danışman Adı']));
-                if(!isHidden('Model', item['Model'])) uniqueModeller.add(getMappedValue('Model', item['Model']));
-                uniqueTarihler.add(item['TarihYilAy']);
-            });
-
-            populateFilter('list-danisman', Array.from(uniqueDanismanlar).sort(), 'Danışman Adı', 'btn-danisman');
-            populateFilter('list-model', Array.from(uniqueModeller).sort(), 'Model', 'btn-model');
-            populateFilter('list-tarih', Array.from(uniqueTarihler).sort().reverse(), 'Tarih', 'btn-tarih');
-        }
-
-        function populateFilter(containerId, items, category, btnId) {
-            let container = document.getElementById(containerId);
-            container.innerHTML = `<label class="select-all-label"><input type="checkbox" onchange="toggleAllFilters('${category}', this.checked, '${containerId}')" checked> Hepsini Seç</label>`;
-            
-            items.forEach(item => {
-                let checked = activeFilters[category].length === 0 || activeFilters[category].includes(item) ? "checked" : "";
-                container.innerHTML += `<label><input type="checkbox" value="${item}" onchange="updateFilters('${category}', '${containerId}', '${btnId}')" ${checked}> ${item}</label>`;
-            });
-            updateBtnText(category, containerId, btnId);
-        }
-
-        function toggleAllFilters(category, isChecked, containerId) {
-            let checkboxes = document.getElementById(containerId).querySelectorAll('input[type="checkbox"]:not(.select-all-label input)');
-            checkboxes.forEach(cb => cb.checked = isChecked);
-            let btnId = containerId.replace('list-', 'btn-');
-            updateFilters(category, containerId, btnId);
-        }
-
-        function updateFilters(category, containerId, btnId) {
-            let checkboxes = document.getElementById(containerId).querySelectorAll('input[type="checkbox"]:not(.select-all-label input)');
-            let selected = [];
-            checkboxes.forEach(cb => { if(cb.checked) selected.push(cb.value); });
-            
-            if(selected.length === checkboxes.length) activeFilters[category] = []; // Hepsi seçiliyse diziyi boşalt (kuralımız)
-            else activeFilters[category] = selected;
-
-            updateBtnText(category, containerId, btnId);
-            processData();
-            drawCharts();
-        }
-
-        function updateBtnText(category, containerId, btnId) {
-            let checkboxes = document.getElementById(containerId).querySelectorAll('input[type="checkbox"]:not(.select-all-label input)');
-            let selectedCount = 0;
-            checkboxes.forEach(cb => { if(cb.checked) selectedCount++; });
-
-            let btn = document.getElementById(btnId);
-            if(selectedCount === checkboxes.length || selectedCount === 0) btn.innerText = "Hepsi (" + checkboxes.length + ")";
-            else btn.innerText = selectedCount + " Seçildi";
-        }
-
-        // --- 6. GRAFİKLERİ ÇİZ (PLOTLY) ---
-        function drawCharts() {
-            if(!verilerHazir) return;
-
-            let total = filteredData.length;
-            let satisCount = 0;
-            let durumCounts = {};
-            let modelCounts = {};
-            let kayipCounts = {};
-            let leadCounts = {};
-
-            filteredData.forEach(item => {
-                let durum = getMappedValue('Durum', item['Durum']);
-                let model = getMappedValue('Model', item['Model']);
-                let kayip = getMappedValue('Kayıp Nedeni', item['Kayıp Nedeni']);
-                let lead = getMappedValue('Lead Kaynağı', item['Lead Kaynağı']);
-
-                if(durum.toLowerCase().includes('satış') || durum.toLowerCase().includes('satis')) satisCount++;
-
-                durumCounts[durum] = (durumCounts[durum] || 0) + 1;
-                modelCounts[model] = (modelCounts[model] || 0) + 1;
-                if(kayip !== 'Belirtilmemiş' && !durum.toLowerCase().includes('satış')) kayipCounts[kayip] = (kayipCounts[kayip] || 0) + 1;
-                leadCounts[lead] = (leadCounts[lead] || 0) + 1;
-            });
-
-            // KPI Güncelle
-            document.getElementById('k-top').innerText = total;
-            document.getElementById('k-sat').innerText = satisCount;
-            let oran = total > 0 ? ((satisCount/total)*100).toFixed(1) : 0;
-            document.getElementById('k-ora').innerText = "%" + oran;
-
-            let bg = '#1e1e1e';
-            let txt = '#ffffff';
-
-            // Durum Pastası
-            Plotly.newPlot('c-durum', [{
-                values: Object.values(durumCounts), labels: Object.keys(durumCounts), type: 'pie', hole: 0.4,
-                marker: { colors: ['#2ecc71', '#e74c3c', '#f1c40f', '#3498db'] }
-            }], { title: { text: 'Genel Durum', font: {color:txt} }, paper_bgcolor: bg, plot_bgcolor: bg, font: {color:txt} });
-
-            // Model Çubuğu
-            Plotly.newPlot('c-model', [{
-                x: Object.keys(modelCounts), y: Object.values(modelCounts), type: 'bar', marker: {color: '#3498db'}
-            }], { title: { text: 'Modellere Göre Dağılım', font: {color:txt} }, paper_bgcolor: bg, plot_bgcolor: bg, font: {color:txt} });
-
-            // Kayıp Nedenleri
-            Plotly.newPlot('c-kayip', [{
-                x: Object.values(kayipCounts), y: Object.keys(kayipCounts), type: 'bar', orientation: 'h', marker: {color: '#e74c3c'}
-            }], { title: { text: 'Kayıp Nedenleri', font: {color:txt} }, paper_bgcolor: bg, plot_bgcolor: bg, font: {color:txt}, margin: {l:150} });
-
-            // Lead Kaynakları
-            Plotly.newPlot('c-lead', [{
-                values: Object.values(leadCounts), labels: Object.keys(leadCounts), type: 'pie', hole: 0.5
-            }], { title: { text: 'Lead Kaynakları', font: {color:txt} }, paper_bgcolor: bg, plot_bgcolor: bg, font: {color:txt} });
-        }
-
-        // --- 7. DARBOĞAZ (PARETO) ANALİZİ ---
-        function renderPareto() {
-            let dimension = document.getElementById('pareto-dimension').value;
-            let counts = {};
-            
-            filteredData.forEach(item => {
-                let val = getMappedValue(dimension, item[dimension]);
-                // Eğer boyut kayıp nedeniyse ve durum satışsa sayma
-                if (dimension === 'Kayıp Nedeni') {
-                    let durum = getMappedValue('Durum', item['Durum']);
-                    if(durum.toLowerCase().includes('satış')) return;
-                    if(val === 'Belirtilmemiş') return;
-                }
+            const counts = {};
+            lossData.forEach(row => {
+                const val = row[dimension] || "Belirtilmemiş";
                 counts[val] = (counts[val] || 0) + 1;
             });
 
-            let sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
-            let xData = sorted.map(x => x[0]);
-            let yData = sorted.map(x => x[1]);
+            const sortedItems = Object.keys(counts).map(k => ({ name: k, count: counts[k] })).sort((a, b) => b.count - a.count);
+            const totalLoss = lossData.length;
+            let cumulative = 0; const xValues = []; const yBars = []; const yLines = [];
+            const pareto80Items = []; let thresholdCrossed = false;
 
-            let total = yData.reduce((a,b) => a+b, 0);
-            let cumPercent = [];
-            let currentSum = 0;
-            yData.forEach(val => {
-                currentSum += val;
-                cumPercent.push((currentSum / total) * 100);
+            sortedItems.forEach(item => {
+                xValues.push(item.name); yBars.push(item.count);
+                cumulative += item.count; const cumPercent = (cumulative / totalLoss) * 100;
+                yLines.push(cumPercent);
+                if (!thresholdCrossed) { pareto80Items.push(item.name); if (cumPercent >= 80) thresholdCrossed = true; }
             });
 
-            var traceBar = { x: xData, y: yData, type: 'bar', name: 'Miktar', marker: {color: '#3498db'} };
-            var traceLine = { x: xData, y: cumPercent, type: 'scatter', mode: 'lines+markers', name: 'Kümülatif %', yaxis: 'y2', line: {color: '#f39c12', width:3} };
+            const traceBar = { x: xValues, y: yBars, type: 'bar', name: 'Kayıp Adedi', marker: { color: '#e74c3c' } };
+            const traceLine = { x: xValues, y: yLines, type: 'scatter', mode: 'lines+markers', name: 'Kümülatif %', yaxis: 'y2', line: { color: '#f39c12', width: 3 }, marker: { size: 8 } };
 
-            var layout = {
-                title: { text: dimension + ' Pareto Analizi', font: {color: '#fff'} },
-                paper_bgcolor: '#1e1e1e', plot_bgcolor: '#1e1e1e', font: {color: '#fff'},
-                yaxis: { title: 'Miktar' },
-                yaxis2: { title: 'Kümülatif %', overlaying: 'y', side: 'right', range: [0, 105] },
-                showlegend: false
+            const layout = {
+                title: { text: `Toplam ${totalLoss} Kaybın "${dimension}" Bazlı Analizi`, font: { color: '#fff', size: 16 } },
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#ddd' },
+                xaxis: { tickangle: -25 }, yaxis: { title: 'Kayıp Adedi', gridcolor: '#333' },
+                yaxis2: { title: 'Kümülatif Yüzde (%)', overlaying: 'y', side: 'right', range: [0, 105], gridcolor: 'transparent' },
+                showlegend: false, margin: { b: 80, t: 60, l: 50, r: 50 }
             };
 
-            Plotly.newPlot('pareto-chart', [traceBar, traceLine], layout);
+            document.getElementById('pareto-chart').innerHTML = "";
+            Plotly.newPlot('pareto-chart', [traceBar, traceLine], layout, {responsive: true});
 
-            // Insight yazısı
-            if(xData.length > 0) {
-                let top20PercentItems = [];
-                for(let i=0; i<cumPercent.length; i++) {
-                    top20PercentItems.push(xData[i]);
-                    if(cumPercent[i] >= 80) break;
-                }
-                document.getElementById('pareto-insight').innerHTML = `💡 <span class="insight-highlight">Odaklanmanız Gereken Nokta:</span> Tüm problemlerin %80'i şu ${top20PercentItems.length} maddeden kaynaklanıyor: <b>${top20PercentItems.join(', ')}</b>. Eforunuzu buraya harcayın.`;
-            }
+            const totalCategories = sortedItems.length;
+            const bottleneckCount = pareto80Items.length;
+            const bottleneckPercent = (yLines[bottleneckCount - 1]).toFixed(1);
+
+            let insightHTML = `<h3 style="margin-top:0;"><i class="fas fa-crosshairs insight-highlight"></i> Sistem Teşhisi ve Yönlendirme</h3>`;
+            insightHTML += `Sistemdeki toplam <b>${totalLoss}</b> adet satış kaybı incelendiğinde; <b>${totalCategories}</b> farklı alt kategori olduğu görülmektedir.<br><br>`;
+            insightHTML += `Ancak Pareto kuralına (Kısıtlar Teorisi) göre, kayıplarınızın <span class="insight-highlight">%${bottleneckPercent}</span>'lik devasa bir kısmı sadece şu <b>${bottleneckCount}</b> ana etkende yoğunlaşmıştır:<br>`;
+            insightHTML += `<ul style="margin:10px 0; color:#fff;">` + pareto80Items.map(i => `<li><b>${i}</b></li>`).join('') + `</ul>`;
+            insightHTML += `<i><b>Yönetici Aksiyon Önerisi:</b> Diğer ${totalCategories - bottleneckCount} tali nedene zaman harcamak yerine, şirketin operasyonel iyileştirme eforunun öncelikli olarak bu <b>${bottleneckCount}</b> ana darboğazın kök nedenlerini araştırmaya yönlendirilmesi önerilmektedir.</i>`;
+
+            document.getElementById('pareto-insight').innerHTML = insightHTML;
         }
 
-        // --- 8. SATIŞ HUNİSİ (FUNNEL) ---
+        // --- YENİ EKLENEN: SATIŞ HUNİSİ (FUNNEL) MOTORU ---
+        function openFunnel() {
+            if(rawData.length === 0) { alert("Veri yok!"); return; }
+            processData(); 
+            showLoading(() => {
+                document.getElementById('home-page').style.display = 'none';
+                document.getElementById('dashboard-page').style.display = 'none';
+                document.getElementById('simulation-page').style.display = 'none';
+                document.getElementById('pareto-page').style.display = 'none';
+                document.getElementById('funnel-page').style.display = 'block';
+                renderFunnel();
+            });
+        }
+
         function renderFunnel() {
-            let huniAsamalari = globalGroups["Huni Aşaması"] || {};
-            let stageCounts = { "1. İletişim / Filtreleme": 0, "2. Ürün ve İhtiyaç": 0, "3. Teklif ve Finansman": 0, "4. Başarılı Satış": 0 };
-            
-            // Satışları bul
-            filteredData.forEach(item => {
-                let durum = getMappedValue('Durum', item['Durum']);
-                if(durum.toLowerCase().includes('satış')) {
-                    stageCounts["4. Başarılı Satış"]++;
-                    stageCounts["3. Teklif ve Finansman"]++; // Satışa gelene kadar her aşamadan geçti
-                    stageCounts["2. Ürün ve İhtiyaç"]++;
-                    stageCounts["1. İletişim / Filtreleme"]++;
-                } else {
-                    let kayip = item['Kayıp Nedeni'];
-                    let foundStage = null;
-                    for(let stage in huniAsamalari) {
-                        if(huniAsamalari[stage].includes(kayip)) { foundStage = stage; break; }
-                    }
-                    
-                    if(foundStage) {
-                        if(foundStage.includes("1.")) { stageCounts["1. İletişim / Filtreleme"]++; }
-                        if(foundStage.includes("2.")) { stageCounts["1. İletişim / Filtreleme"]++; stageCounts["2. Ürün ve İhtiyaç"]++; }
-                        if(foundStage.includes("3.")) { stageCounts["1. İletişim / Filtreleme"]++; stageCounts["2. Ürün ve İhtiyaç"]++; stageCounts["3. Teklif ve Finansman"]++; }
-                    } else {
-                        // Eşleşmemişse en azından 1. aşamaya girmiş sayalım
-                        stageCounts["1. İletişim / Filtreleme"]++;
-                    }
+            let totalLeads = cleanData.length;
+            let totalSales = cleanData.filter(row => row['Durum'] === 'Satış').length;
+
+            let dropStage1 = 0; // İletişimde kopanlar
+            let dropStage2 = 0; // Ürün aşamasında kopanlar
+            let dropStage3 = 0; // Teklif aşamasında kopanlar
+
+            let huniGroups = globalGroups["Huni Aşaması"] || {};
+
+            cleanData.forEach(row => {
+                if(row['Durum'] !== 'Satış' && row['Kayıp Nedeni']) {
+                    let reason = row['Kayıp Nedeni'].toString().trim();
+                    if (huniGroups["1. İletişim / Filtreleme"] && huniGroups["1. İletişim / Filtreleme"].includes(reason)) dropStage1++;
+                    else if (huniGroups["2. Ürün ve İhtiyaç"] && huniGroups["2. Ürün ve İhtiyaç"].includes(reason)) dropStage2++;
+                    else if (huniGroups["3. Teklif ve Finansman"] && huniGroups["3. Teklif ve Finansman"].includes(reason)) dropStage3++;
                 }
             });
 
-            let xData = Object.values(stageCounts);
-            let yData = Object.keys(stageCounts);
+            // Kümülatif Mantık: Bir aşamadan geçenler, o aşamada kaybedilenlerin çıkarılmasıyla bulunur.
+            let passedStage1 = totalLeads - dropStage1; // İletişimi geçip masaya oturanlar
+            let passedStage2 = passedStage1 - dropStage2; // Masaya oturup fiyat müzakeresine kalanlar
 
             var data = [{
-                type: 'funnel', y: yData, x: xData,
+                type: 'funnel',
+                y: ['1. Toplam Lead (Giriş)', '2. İletişimi Geçenler', '3. Müzakereye Kalanlar', '4. Satışa Dönenler'],
+                x: [totalLeads, passedStage1, passedStage2, totalSales],
+                hoverinfo: 'x+percent previous+percent initial',
                 textinfo: "value+percent initial",
-                marker: { color: ["#3498db", "#9b59b6", "#e67e22", "#2ecc71"] }
+                marker: { color: ["#3498db", "#f39c12", "#e67e22", "#27ae60"] }
             }];
 
-            var layout = { paper_bgcolor: '#1e1e1e', plot_bgcolor: '#1e1e1e', font: {color: '#fff'}, margin: {l: 180} };
-            Plotly.newPlot('funnelChart', data, layout);
+            var layout = {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: '#ddd', size: 14 },
+                margin: { l: 220, r: 50, t: 40, b: 20 }
+            };
+
+            document.getElementById('funnelChart').innerHTML = "";
+            Plotly.newPlot('funnelChart', data, layout, {responsive: true});
         }
 
-        // --- 9. SATIŞ SİMÜLASYONU ---
-        function initSimulation() {
-            let danismanlar = [...new Set(rawData.map(x => getMappedValue('Danışman Adı', x['Danışman Adı'])))];
-            let modeller = [...new Set(rawData.map(x => getMappedValue('Model', x['Model'])))];
-            let aylar = [...new Set(rawData.map(x => x['TarihYilAy']))].sort().reverse();
-
-            fillSimGrid('grid-consultant', danismanlar, 'cons');
-            fillSimGrid('grid-model', modeller, 'model');
-            fillSimGrid('grid-month', aylar, 'month');
-
-            fillSelect('wi-cons', danismanlar);
-            fillSelect('wi-model', modeller);
-            fillSelect('wi-month', aylar);
-
-            goToStep(1);
-        }
-
-        function fillSimGrid(id, dataList, type) {
-            let html = '';
-            dataList.forEach(item => {
-                if(item !== 'Belirtilmemiş' && item !== 'Bilinmiyor') {
-                    let icon = type === 'cons' ? 'fa-user' : (type === 'model' ? 'fa-car' : 'fa-calendar');
-                    html += `<div class="selection-card" onclick="selectSimItem('${type}', '${item}')"><i class="fas ${icon}"></i>${item}</div>`;
-                }
+        function openHome() { 
+            showLoading(() => {
+                document.getElementById('simulation-page').style.display='none'; 
+                document.getElementById('dashboard-page').style.display='none'; 
+                document.getElementById('pareto-page').style.display='none'; 
+                document.getElementById('funnel-page').style.display='none'; 
+                document.getElementById('home-page').style.display='flex'; 
             });
-            document.getElementById(id).innerHTML = html;
         }
 
-        function fillSelect(id, dataList) {
-            let html = '';
-            dataList.forEach(item => { if(item !== 'Belirtilmemiş' && item !== 'Bilinmiyor') html += `<option value="${item}">${item}</option>`; });
-            document.getElementById(id).innerHTML = html;
+        // --- YARDIMCI FONKSİYONLAR ---
+        function initFilters() {
+            if(cleanData.length === 0) return;
+            setupChecklist("list-danisman", [...new Set(cleanData.map(d => d["Danışman Adı"]))].sort(), "btn-danisman");
+            setupChecklist("list-model", [...new Set(cleanData.map(d => d["Model"]))].sort(), "btn-model");
+            setupDateFilter();
+        }
+        function setupChecklist(listId, items, btnId) {
+            const container = document.getElementById(listId); container.innerHTML = "";
+            const allLabel = document.createElement("label"); allLabel.className = "select-all-label"; allLabel.innerHTML = `<input type="checkbox" id="all-${listId}" checked> (Tümünü Seç)`; container.appendChild(allLabel);
+            items.forEach(item => { if(item) { const lbl = document.createElement("label"); lbl.innerHTML = `<input type="checkbox" class="item-check-${listId}" value="${item}" checked> ${item}`; container.appendChild(lbl); } });
+            const allCheck = document.getElementById(`all-${listId}`); const itemChecks = document.getElementsByClassName(`item-check-${listId}`);
+            allCheck.onclick = (e) => { e.stopPropagation(); for(let c of itemChecks) c.checked = allCheck.checked; updateDash(); };
+            container.onchange = (e) => { if(e.target !== allCheck) allCheck.checked = (itemChecks.length === Array.from(itemChecks).filter(c => c.checked).length); updateDash(); };
+            container.onclick = (e) => e.stopPropagation();
+        }
+        function setupDateFilter() {
+            const container = document.getElementById("list-tarih"); container.onclick = (e) => e.stopPropagation(); container.innerHTML = "";
+            let hierarchy = {}; cleanData.forEach(d => { let y = d._Year; let m = d._Month; let idx = d._MonthIdx; if(!hierarchy[y]) hierarchy[y] = []; if(!hierarchy[y].find(x => x.name === m)) hierarchy[y].push({ name: m, idx: idx }); });
+            const allDiv = document.createElement("div"); allDiv.innerHTML = `<label class="select-all-label"><input type="checkbox" id="all-date-check" checked> (Tüm Tarihler)</label>`; container.appendChild(allDiv);
+
+            Object.keys(hierarchy).sort().reverse().forEach(year => {
+                const yearWrap = document.createElement("div"); const row = document.createElement("div"); row.className = "tree-year-row"; row.innerHTML = `<i class="fas fa-chevron-right tree-toggle"></i> <input type="checkbox" class="tree-year-check" value="${year}" checked> <span>${year}</span>`;
+                row.querySelector(".tree-toggle").onclick = function(e) { e.stopPropagation(); yearWrap.classList.toggle("tree-active"); };
+                const yearCheck = row.querySelector(".tree-year-check"); const monthsContainer = document.createElement("div"); monthsContainer.className = "tree-month-container";
+
+                hierarchy[year].sort((a,b) => a.idx - b.idx).forEach(mObj => { 
+                    const mRow = document.createElement("div"); mRow.className = "tree-month-row"; 
+                    mRow.innerHTML = `<input type="checkbox" class="tree-month-check" data-year="${year}" value="${mObj.name}" checked> ${mObj.name}`; 
+                    monthsContainer.appendChild(mRow); 
+                });
+
+                yearWrap.appendChild(row); yearWrap.appendChild(monthsContainer); container.appendChild(yearWrap);
+
+                yearCheck.onchange = function() { monthsContainer.querySelectorAll(".tree-month-check").forEach(s => s.checked = yearCheck.checked); updateDash(); };
+                monthsContainer.querySelectorAll(".tree-month-check").forEach(mCheck => {
+                    mCheck.onchange = function() { 
+                        const allMonthsChecked = Array.from(monthsContainer.querySelectorAll(".tree-month-check")).every(c => c.checked);
+                        yearCheck.checked = allMonthsChecked; updateDash(); 
+                    };
+                });
+            });
+            document.getElementById("all-date-check").onclick = function(e) { e.stopPropagation(); const state = this.checked; container.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = state); updateDash(); };
+        }
+        function getSelected(listId) { return Array.from(document.querySelectorAll(`.item-check-${listId}:checked`)).map(i => i.value); }
+        function getSelectedDateFilters() { let selectedPairs = []; document.querySelectorAll(".tree-month-check:checked").forEach(cb => { selectedPairs.push(cb.getAttribute("data-year") + "-" + cb.value); }); return selectedPairs; }
+        function updateBtnText(btnId, selected, label) { const btn = document.getElementById(btnId); const total = document.getElementsByClassName(`item-check-${btnId.split('-')[1]}`).length; if(selected.length === 0) btn.innerHTML = "Seçim Yok ▼"; else if(selected.length === total) btn.innerHTML = "Hepsi ▼"; else btn.innerHTML = selected.length + " " + label + " ▼"; }
+
+        function updateDash() {
+            if(cleanData.length === 0) return;
+            const selDanisman = getSelected("list-danisman");
+            const selModel = getSelected("list-model");
+            const selDatePairs = getSelectedDateFilters();
+
+            updateBtnText("btn-danisman", selDanisman, "Danışman"); 
+            updateBtnText("btn-model", selModel, "Model");
+
+            const totalMonths = document.querySelectorAll(".tree-month-check").length; 
+            const selMonths = document.querySelectorAll(".tree-month-check:checked").length; 
+            document.getElementById("btn-tarih").innerHTML = (selMonths === totalMonths) ? "Hepsi ▼" : selMonths + " Ay ▼";
+
+            const filtered = cleanData.filter(d => selDanisman.includes(d["Danışman Adı"]) && selModel.includes(d["Model"]) && selDatePairs.includes(d["_Year"] + "-" + d["_Month"]));
+            currentFilteredData = filtered;
+
+            document.getElementById("k-top").innerText = filtered.length;
+            const nSat = filtered.filter(d => d["Durum"] === "Satış").length;
+            document.getElementById("k-sat").innerText = nSat;
+
+            let overallTotal = cleanData.length;
+            let overallSat = cleanData.filter(d => d.Durum === "Satış").length;
+            let overallRate = overallTotal > 0 ? (overallSat / overallTotal * 100) : 0;
+
+            let curRate = filtered.length > 0 ? (nSat / filtered.length * 100) : 0;
+            let diff = (curRate - overallRate).toFixed(1);
+
+            let arrowHtml = "";
+            if (diff > 0) arrowHtml = `<span style="color:#2ecc71; font-size:16px; margin-left:10px;">▲ (+%${diff})</span>`;
+            else if (diff < 0) arrowHtml = `<span style="color:#e74c3c; font-size:16px; margin-left:10px;">▼ (%${Math.abs(diff)})</span>`;
+            else arrowHtml = `<span style="color:#aaa; font-size:16px; margin-left:10px;">➖ (%0)</span>`;
+
+            document.getElementById("k-ora").innerHTML = "%" + curRate.toFixed(1) + arrowHtml;
+
+            renderCharts(filtered);
+            document.getElementById("ai-response").innerHTML = "Filtreler güncellendi. Yeni analiz için yukarıdaki butonları kullanabilirsiniz...";
         }
 
-        function selectSimItem(type, val) {
-            simSelections[type] = val;
-            if(type === 'cons') goToStep(2);
-            if(type === 'model') goToStep(3);
-            if(type === 'month') {
-                document.getElementById('wi-cons').value = simSelections.cons;
-                document.getElementById('wi-model').value = simSelections.model;
-                document.getElementById('wi-month').value = simSelections.month;
-                goToStep(4);
-                recalculateSim();
-            }
+        function renderCharts(data) {
+            function getDynamicMargin(labels) { if(!labels || labels.length === 0) return 100; const maxLen = labels.reduce((a, b) => Math.max(a, b.length), 0); return Math.max(100, maxLen * 8); }
+            const baseLayout = { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'white'}, margin:{t:40,l:40,r:20, b:50} };
+
+            const models = [...new Set(data.map(d => d.Model))]; 
+            const marginModel = getDynamicMargin(models); 
+            const satisData = models.map(m => data.filter(d => d.Model === m && d.Durum === "Satış").length);
+            const digerData = models.map(m => data.filter(d => d.Model === m && d.Durum !== "Satış").length);
+
+            Plotly.newPlot('c-model', [
+                { x: satisData, y: models, name: 'Satış', type: 'bar', orientation: 'h', marker:{color:'#2ecc71'} }, 
+                { x: digerData, y: models, name: 'Diğer', type: 'bar', orientation: 'h', marker:{color:'#e74c3c'} }
+            ], { ...baseLayout, title: 'Model Performansı', barmode:'stack', margin:{ l: marginModel, r:20, t:40, b:20 } });
+
+            const d1 = count(data, "Durum"); 
+            Plotly.newPlot('c-durum', [{ values: Object.values(d1), labels: Object.keys(d1), type: 'pie', hole: 0.4 }], { ...baseLayout, title: 'Satış Durumu' });
+
+            const kData = count(data.filter(d => d.Durum !== "Satış" && d["Kayıp Nedeni"] !== "Belirtilmemiş"), "Kayıp Nedeni"); 
+            const marginKayip = getDynamicMargin(Object.keys(kData));
+            Plotly.newPlot('c-kayip', [{ x: Object.keys(kData), y: Object.values(kData), type: 'bar', marker:{color: '#f1c40f'} }], { ...baseLayout, title: 'Kayıp Nedenleri', margin: { b: marginKayip, l: 40, r: 20, t: 40 } });
+
+            const lData = count(data, "Lead Kaynağı"); 
+            const marginLead = getDynamicMargin(Object.keys(lData)); 
+            Plotly.newPlot('c-lead', [{ x: Object.keys(lData), y: Object.values(lData), type: 'bar', marker:{color: '#9b59b6'} }], { ...baseLayout, title: 'Lead Kaynağı', margin:{ b: marginLead, l: 40, r: 20, t: 40 } });
         }
+        function count(data, key) { const c = {}; data.forEach(d => c[d[key]] = (c[d[key]] || 0) + 1); return c; }
 
         function goToStep(step) {
             document.querySelectorAll('.sim-step').forEach(el => el.classList.remove('active'));
             document.getElementById('sim-step-' + step).classList.add('active');
+            if(step===1) renderSimGrid('grid-consultant', 'Danışman Adı', (v)=>{ simSelections.cons=v; goToStep(2); });
+            if(step===2) renderSimGrid('grid-model', 'Model', (v)=>{ simSelections.model=v; goToStep(3); });
+            if(step===3) {
+                const c = document.getElementById('grid-month'); c.innerHTML="";
+                monthNames.forEach(m => {
+                    let d = document.createElement('div'); d.className='selection-card';
+                    d.innerHTML=`<b>${m}</b>`; d.onclick=()=>{ simSelections.month=m; goToStep(4); initResult(); };
+                    c.appendChild(d);
+                });
+            }
         }
 
-        function recalculateSim() {
-            let cons = document.getElementById('wi-cons').value;
-            let model = document.getElementById('wi-model').value;
-            let month = document.getElementById('wi-month').value;
-            
-            // Gerçekçi basit bir matematik modeli
-            let cTotal=0, cSat=0, mTotal=0, mSat=0;
-            
-            rawData.forEach(item => {
-                let d = getMappedValue('Durum', item['Durum']).toLowerCase();
-                let isSat = d.includes('satış') || d.includes('satis');
-                
-                if(getMappedValue('Danışman Adı', item['Danışman Adı']) === cons) { cTotal++; if(isSat) cSat++; }
-                if(getMappedValue('Model', item['Model']) === model) { mTotal++; if(isSat) mSat++; }
+        function renderSimGrid(id, col, cb) {
+            const c = document.getElementById(id); c.innerHTML = "";
+            const items = [...new Set(cleanData.map(d=>d[col]))].sort();
+
+            items.forEach(i => {
+                let d = document.createElement('div'); 
+                if(col === 'Model') {
+                    d.style.display = "flex"; d.style.flexDirection = "column"; d.style.alignItems = "center";
+                    d.style.cursor = "pointer"; d.style.padding = "10px"; d.style.transition = "transform 0.2s ease"; 
+                    let imgSrc = "arabalar/" + i + ".webp";
+                    d.innerHTML = `<b style="margin-bottom: 10px; font-size: 16px; color: #00d4ff; text-shadow: 0 2px 4px rgba(0,0,0,0.8); text-align: center;">${i}</b>
+                        <img src="${imgSrc}" style="width: 140px; height: 80px; object-fit: contain; filter: drop-shadow(0px 8px 10px rgba(0,0,0,0.6));" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3204/3204003.png'">`;
+                    d.onmouseover = () => d.style.transform = "scale(1.15)"; d.onmouseout = () => d.style.transform = "scale(1)";
+                } else {
+                    d.className = 'selection-card';
+                    d.innerHTML = `<i class="fas fa-check-circle" style="font-size: 24px; margin-bottom: 10px; color: #00d4ff;"></i><b style="text-align: center;">${i}</b>`;
+                }
+                d.onclick = () => cb(i); c.appendChild(d);
             });
+        }
+        function initResult() {
+            const fill = (id, items, sel) => {
+                const el = document.getElementById(id); el.innerHTML="";
+                items.forEach(i=>{ let o=document.createElement('option'); o.value=i; o.text=i; if(i===sel)o.selected=true; el.appendChild(o); });
+            };
+            fill('wi-cons', [...new Set(cleanData.map(d=>d["Danışman Adı"]))].sort(), simSelections.cons);
+            fill('wi-model', [...new Set(cleanData.map(d=>d["Model"]))].sort(), simSelections.model);
+            fill('wi-month', monthNames, simSelections.month);
+            recalculateSim();
+        }
+        function recalculateSim() {
+            const c = document.getElementById('wi-cons').value; const m = document.getElementById('wi-model').value; const mo = document.getElementById('wi-month').value; 
+            const wC = parseInt(document.getElementById('w-cons').value); const wM = parseInt(document.getElementById('w-model').value); const wT = parseInt(document.getElementById('w-month').value);
 
-            let consRate = cTotal > 0 ? (cSat/cTotal) : 0;
-            let modelRate = mTotal > 0 ? (mSat/mTotal) : 0;
-            
-            // Ağırlıklar (Kullanıcı slider'dan alır)
-            // Varsayılanları okuyalım (Eğer HTML içinde w-cons vs varsa, yoksa sabit 0.5)
-            let wC = 0.5; let wM = 0.5; // Basitleştirilmiş ağırlık
-            
-            let finalScore = ((consRate * wC) + (modelRate * wM)) * 100;
-            
-            // Ay trendi (Çok basit rastgelelik veya trend eklenebilir, şimdilik sabit)
-            finalScore = finalScore > 95 ? 95 : (finalScore < 5 ? 5 : finalScore);
+            document.getElementById('val-cons').innerText = "%" + wC; document.getElementById('val-model').innerText = "%" + wM; document.getElementById('val-month').innerText = "%" + wT;
 
-            document.getElementById('result-score').innerText = "%" + finalScore.toFixed(1);
+            const getR = (col, val) => { const sub = cleanData.filter(d=>d[col]===val); return sub.length ? (sub.filter(d=>d.Durum==="Satış").length/sub.length)*100 : 0; };
+            const rC = getR("Danışman Adı", c); const rM = getR("Model", m); const rT = getR("_Month", mo); 
+            const final = ((rC*wC)+(rM*wM)+(rT*wT))/(wC+wM+wT);
+
+            document.getElementById('result-score').innerText = "%" + final.toFixed(1);
+            document.getElementById('result-detail').innerText = `Danışman Başarısı: %${rC.toFixed(0)} | Model Başarısı: %${rM.toFixed(0)} | Ay Ortalaması: %${rT.toFixed(0)}`;
+        }
+        function resetSim() { goToStep(1); }
+
+        // --- AYARLAR ---
+        let activeCategory = "Model";
+
+        function openSettings() { 
+            document.getElementById('settings-modal').style.display = 'flex'; 
+            setCategory(activeCategory); 
+            document.getElementById('gemini-api-key').value = localStorage.getItem('geminiApiKey') || "";
         }
 
-        function resetSim() {
-            simSelections = { cons: '', model: '', month: '' };
-            goToStep(1);
+        function saveAndCloseSettings() { 
+            localStorage.setItem('geminiApiKey', document.getElementById('gemini-api-key').value.trim());
+            localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); 
+            localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); 
+            document.getElementById('settings-modal').style.display='none'; 
+            if(document.getElementById('dashboard-page').style.display==='block') { processData(); initFilters(); updateDash(); } 
         }
 
-        // --- 10. AYARLAR (GRUPLAMA) SİSTEMİ ---
-        function openSettings() {
-            renderSettingsLists();
-            document.getElementById('settings-modal').style.display = 'flex';
-        }
+        function discardAndCloseSettings() { globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')); hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')); document.getElementById('settings-modal').style.display='none'; }
 
-        function closeSettings() {
-            document.getElementById('settings-modal').style.display = 'none';
-        }
-
-        function setCategory(cat) {
-            activeCategory = cat;
-            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById('settings-title').innerText = cat + " Ayarları";
-            renderSettingsLists();
-        }
+        function setCategory(cat) { activeCategory = cat; renderSettingsLists(); document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active')); event.target.classList.add('active'); }
 
         function renderSettingsLists() {
-            if(!verilerHazir) return;
-            
-            let rawSet = new Set();
-            rawData.forEach(item => {
-                let val = item[activeCategory === 'Huni Aşaması' ? 'Kayıp Nedeni' : activeCategory];
-                if(val && val !== 'Belirtilmemiş') rawSet.add(val);
-            });
-            let allRaw = Array.from(rawSet).sort();
+            const rd = document.getElementById('raw-list'); const gd = document.getElementById('group-list'); rd.innerHTML=""; gd.innerHTML="";
 
-            let groupHtml = '';
-            let usedItems = [];
-            
-            if(!globalGroups[activeCategory]) globalGroups[activeCategory] = {};
+            // Huni Aşaması seçiliyse, listeye "Kayıp Nedeni" sütunundaki kelimeleri çekeceğiz
+            let colName = (activeCategory === "Huni Aşaması") ? "Kayıp Nedeni" : activeCategory;
 
-            for(let gName in globalGroups[activeCategory]) {
-                let items = globalGroups[activeCategory][gName];
-                usedItems.push(...items);
-                
-                let tags = items.map(i => `<span class="group-tag" onclick="removeFromGroup('${gName}', '${i}')">${i} &times;</span>`).join('');
-                
-                groupHtml += `
-                    <div class="group-container">
-                        <div class="group-header">
-                            <span>${gName}</span>
-                            <div>
-                                <button class="btn-action btn-success" onclick="addSelectedToGroup('${gName}')">+</button>
-                                <button class="btn-action btn-danger" onclick="deleteGroup('${gName}')"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>
-                        <div class="group-content">${tags}</div>
-                    </div>`;
-            }
-            document.getElementById('group-list').innerHTML = groupHtml;
+            const items = [...new Set(rawData.map(d=>d[colName]))].sort();
+            let assigned = []; for(let g in globalGroups[activeCategory]) assigned.push(...globalGroups[activeCategory][g]);
 
-            let rawHtml = '';
-            allRaw.forEach(val => {
-                if(!usedItems.includes(val)) {
-                    let selClass = selectedRawItems.includes(val) ? 'selected' : '';
-                    let hidClass = hiddenItems.includes(val) ? 'hidden-item' : '';
-                    rawHtml += `<div class="raw-item ${selClass} ${hidClass}" onclick="toggleRawSelection('${val}')">${val}</div>`;
+            items.forEach(i => {
+                if(!assigned.includes(i)) {
+                    let d = document.createElement('div'); d.className='raw-item'; d.innerText=i;
+                    if(hiddenItems.includes(i.trim())) d.classList.add('hidden-item');
+                    d.onclick=()=>{ d.classList.toggle('selected'); };
+                    rd.appendChild(d);
                 }
             });
-            document.getElementById('raw-list').innerHTML = rawHtml;
-        }
-
-        function toggleRawSelection(val) {
-            if(selectedRawItems.includes(val)) selectedRawItems = selectedRawItems.filter(x => x !== val);
-            else selectedRawItems.push(val);
-            renderSettingsLists();
+            for(let gName in globalGroups[activeCategory]) {
+                let div = document.createElement('div'); div.className='group-container';
+                div.innerHTML = `<div class="group-header"><span>${gName}</span> <div><button class="btn-action btn-success" onclick="addSelectedToGroup('${gName}')">Seçiliyi Ekle</button> <button class="btn-action btn-danger" onclick="deleteGroup('${gName}')">Sil</button></div></div><div class="group-content">${globalGroups[activeCategory][gName].map(x=>`<span class="group-tag">${x} <i class="fas fa-times" style="cursor:pointer;margin-left:3px;" onclick="removeFromGroup('${gName}','${x}')"></i></span>`).join('')}</div>`;
+                gd.appendChild(div);
+            }
         }
 
         function createNewGroup() {
-            let name = document.getElementById('new-group-name').value.trim();
-            if(!name) return;
-            if(!globalGroups[activeCategory]) globalGroups[activeCategory] = {};
-            if(globalGroups[activeCategory][name]) { alert("Bu grup zaten var!"); return; }
+            const name = document.getElementById('new-group-name').value;
+            if(!name) { alert("Lütfen grup adı girin."); return; }
+            if(!globalGroups[activeCategory]) globalGroups[activeCategory]={};
+            if(globalGroups[activeCategory][name]) { alert("Bu grup zaten var."); return; }
             globalGroups[activeCategory][name] = [];
-            document.getElementById('new-group-name').value = '';
-            renderSettingsLists();
-        }
-
-        function deleteGroup(gName) {
-            delete globalGroups[activeCategory][gName];
+            document.getElementById('new-group-name').value = "";
             renderSettingsLists();
         }
 
         function addSelectedToGroup(gName) {
-            if(selectedRawItems.length === 0) return;
-            globalGroups[activeCategory][gName].push(...selectedRawItems);
-            selectedRawItems = [];
+            const selectedItems = document.querySelectorAll('.raw-item.selected');
+            if(selectedItems.length === 0) { alert("Listeden eklenecek verileri seçin."); return; }
+            selectedItems.forEach(el => { const val = el.innerText; if(!globalGroups[activeCategory][gName].includes(val)) { globalGroups[activeCategory][gName].push(val); } });
             renderSettingsLists();
         }
 
-        function removeFromGroup(gName, val) {
-            globalGroups[activeCategory][gName] = globalGroups[activeCategory][gName].filter(x => x !== val);
-            renderSettingsLists();
-        }
+        function removeFromGroup(gName, item) { globalGroups[activeCategory][gName] = globalGroups[activeCategory][gName].filter(x => x !== item); renderSettingsLists(); }
+        function deleteGroup(name) { delete globalGroups[activeCategory][name]; renderSettingsLists(); }
 
         function toggleHideSelected() {
-            if(selectedRawItems.length === 0) return;
-            selectedRawItems.forEach(val => {
-                if(hiddenItems.includes(val)) hiddenItems = hiddenItems.filter(x => x !== val);
-                else hiddenItems.push(val);
+            document.querySelectorAll('.raw-item.selected').forEach(el => {
+                const val = el.innerText.trim();
+                if(hiddenItems.includes(val)) hiddenItems = hiddenItems.filter(x=>x!==val); else hiddenItems.push(val);
             });
-            selectedRawItems = [];
             renderSettingsLists();
         }
-
-        function saveAndCloseSettings() {
-            let apiKeyVal = document.getElementById('gemini-api-key').value.trim();
-            const ayarPaketi = { groups: globalGroups, hidden: hiddenItems, apiKey: apiKeyVal };
-            
-            if(window.pywebview && window.pywebview.api) {
-                window.pywebview.api.save_ui_settings(JSON.stringify(ayarPaketi)).then(res => {
-                    if(res === "OK") { closeSettings(); processData(); drawCharts(); }
-                    else alert("Ayarlar kaydedilemedi: " + res);
-                });
-            } else {
-                alert("Python bağlantısı koptu.");
-            }
+        function openResetConfirm() {
+            document.getElementById('reset-confirm-input').value = ""; 
+            document.getElementById('reset-confirm-modal').style.display = 'flex';
         }
 
-        function openResetConfirm() { document.getElementById('reset-confirm-modal').style.display = 'flex'; }
-        function closeResetConfirm() { document.getElementById('reset-confirm-modal').style.display = 'none'; }
+        function closeResetConfirm() {
+            document.getElementById('reset-confirm-modal').style.display = 'none';
+        }
+
         function executeReset() {
-            if(document.getElementById('reset-confirm-input').value.trim().toLowerCase() === "sıfırla") {
-                globalGroups = { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {}, "Huni Aşaması": { "1. İletişim / Filtreleme": [], "2. Ürün ve İhtiyaç": [], "3. Teklif ve Finansman": [] } };
+            const inputVal = document.getElementById('reset-confirm-input').value.trim().toLowerCase();
+            if (inputVal === "sıfırla" || inputVal === "sifirla") {
+                localStorage.removeItem('dashboardGroups');
+                localStorage.removeItem('hiddenItems');
+                globalGroups = { 
+                    "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {},
+                    "Huni Aşaması": { "1. İletişim / Filtreleme": [], "2. Ürün ve İhtiyaç": [], "3. Teklif ve Finansman": [] } 
+                };
                 hiddenItems = [];
-                if(window.pywebview && window.pywebview.api) window.pywebview.api.save_ui_settings("{}");
+                alert("Tüm ayarlar başarıyla sıfırlandı!");
                 closeResetConfirm();
-                renderSettingsLists();
-                alert("Ayarlar sıfırlandı.");
+                renderSettingsLists(); 
+            } else {
+                alert("Hatalı giriş! İşlemi onaylamak için lütfen kutuya 'sıfırla' yazın.");
             }
-        }
-
-        // --- 11. YAPAY ZEKA ---
-        async function callGeminiAPI(prompt, divId) {
-            let key = document.getElementById('gemini-api-key') ? document.getElementById('gemini-api-key').value : "";
-            if(!key) { alert("Lütfen ayarlardan Gemini API anahtarınızı girin!"); return; }
-            
-            document.getElementById(divId).innerHTML = "<span class='ai-typing'>Yapay zeka analiz ediyor... Lütfen bekleyin.</span>";
-            
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                });
-                let data = await response.json();
-                if(data.candidates && data.candidates[0].content) {
-                    document.getElementById(divId).innerHTML = data.candidates[0].content.parts[0].text.replace(/\n/g, "<br>");
-                } else { document.getElementById(divId).innerText = "Cevap alınamadı."; }
-            } catch(e) { document.getElementById(divId).innerText = "API Hatası: " + e.message; }
-        }
-
-        function getDashDataStr() {
-            return `Görüşme:${document.getElementById('k-top').innerText}, Satış:${document.getElementById('k-sat').innerText}, Oran:${document.getElementById('k-ora').innerText}.`;
-        }
-
-        function aiYorumla() { callGeminiAPI(`Şu otomotiv satış verilerini kısaca ve profesyonelce yorumla: ${getDashDataStr()}`, "ai-response"); }
-        function aiOneriVer() { callGeminiAPI(`Şu otomotiv satış verilerine bakarak satışları artırmak için 3 kısa öneri ver: ${getDashDataStr()}`, "ai-response"); }
-        function aiOzelSoru() { 
-            let q = document.getElementById('ai-custom-prompt').value; 
-            if(q) callGeminiAPI(`Şu satış verileri: ${getDashDataStr()}. Soru: ${q}`, "ai-response"); 
-        }
-
-        // PDF İndirme
-        function exportPDF() {
-            let element = document.getElementById('dashboard-page');
-            html2pdf(element, { margin: 10, filename: 'Satis_Analiz_Raporu.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } });
         }
     </script>
 </body>
