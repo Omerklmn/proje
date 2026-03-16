@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import webview
 import tempfile
+import uuid  # <--- YENİ EKLENDİ: Tarayıcı önbelleğini kırmak için!
 
 # --- YARDIMCI FONKSİYONLAR ---
 def resource_path(relative_path):
@@ -17,7 +18,6 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 def get_real_path(filename):
-    # EXE'nin çalıştığı GERÇEK klasörü bulur (Geçici TEMP klasörünü değil)
     if getattr(sys, 'frozen', False):
         return os.path.join(os.path.dirname(sys.executable), filename)
     return os.path.abspath(filename)
@@ -38,7 +38,6 @@ def get_image_data(filename):
 class Api:
     def save_ui_settings(self, settings_json):
         try:
-            # Ayarları EXE'nin olduğu gerçek klasöre kaydet
             with open(get_real_path("ui_ayarlar.json"), "w", encoding="utf-8") as f:
                 f.write(settings_json)
             return "OK"
@@ -133,7 +132,7 @@ def main():
         if not os.path.exists(template_path):
             root = tk.Tk()
             root.withdraw()
-            messagebox.showerror("Kritik Dosya Eksik!", f"Program çalışmak için 'tasarim.html' dosyasına ihtiyaç duyuyor ancak bulamadı.\n\nLütfen GitHub deponuzdaki HTML dosyasının adının tam olarak 'tasarim.html' olduğundan emin olun.")
+            messagebox.showerror("Kritik Dosya Eksik!", f"Program çalışmak için 'tasarim.html' dosyasına ihtiyaç duyuyor ancak bulamadı.")
             root.destroy()
             sys.exit()
 
@@ -145,8 +144,10 @@ def main():
         html_content = html_content.replace("[[GRAFIK_SRC]]", get_image_data("grafik_resmi.png"))
         html_content = html_content.replace("[[SIM_SRC]]", get_image_data("simulasyon_resmi.png"))
 
+        # --- ÇÖZÜM: HER SEFERİNDE BENZERSİZ DOSYA ADI (CACHE KIRICI) ---
         temp_dir = tempfile.gettempdir()
-        temp_file = os.path.join(temp_dir, "SatisAnaliz_Temp.html")
+        unique_id = uuid.uuid4().hex # Rastgele şifre üretir
+        temp_file = os.path.join(temp_dir, f"SatisAnaliz_Temp_{unique_id}.html")
 
         with open(temp_file, "w", encoding="utf-8") as f:
             f.write(html_content)
