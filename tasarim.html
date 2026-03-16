@@ -401,9 +401,7 @@
         </div>
     </div>
     <script>
-        // --- YENİ: PYTHON İLE KÖPRÜ BAĞLANTISI (AÇILIŞ) ---
-        window.addEventListener('pywebviewready', function() {
-            // Pencere açılınca Python'dan fiziksel ayarları çek
+       window.addEventListener('pywebviewready', function() {
             window.pywebview.api.load_ui_settings().then(function(response) {
                 if(response && response !== "{}") {
                     let data = JSON.parse(response);
@@ -420,11 +418,15 @@
                         localStorage.setItem('geminiApiKey', data.apiKey);
                         document.getElementById('gemini-api-key').value = data.apiKey;
                     }
-                    console.log("Ayarlar Python'dan başarıyla yüklendi.");
+                    
+                    // İŞTE BÜTÜN SORUNU ÇÖZEN, EKRANI YENİLEYEN KODLAR BURASI:
+                    if (typeof renderSettingsLists === "function") renderSettingsLists();
+                    if (typeof initFilters === "function") initFilters();
+                    if (typeof processData === "function") processData();
+                    if (typeof updateDash === "function") updateDash();
                 }
             });
         });
-
         // --- MEVCUT KAYDET BUTONUNU GÜNCELLEME ---
         // Kodundaki mevcut 'saveAndCloseSettings' fonksiyonunu bulup BUNUNLA DEĞİŞTİR:
         function saveAndCloseSettings() { 
