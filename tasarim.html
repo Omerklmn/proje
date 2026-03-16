@@ -401,36 +401,82 @@
         </div>
     </div>
     <script>
-       // 1. AÇILIŞTA YÜKLEME KODU (AKILLI RADAR SİSTEMİ)
+       // 1. AÇILIŞTA YÜKLEME KODU (AKILLI RADAR + GÜVENLİ VERİ ÇEKİMİ)
         let sistemBasladi = false;
 
         function sistemiAtesle() {
-            if(sistemBasladi) return; // Zaten başladıysa tekrar başlama
+            if(sistemBasladi) return;
             sistemBasladi = true;
 
-            // Python köprüsünden ayarları çek
             if(window.pywebview && window.pywebview.api) {
-                window.pywebview.api.load_ui_settings().then(function(response) {
-                    if(response && response !== "{}") {
+                
+                // ADIM 1: Excel verilerini Python API üzerinden güvenle çek!
+                window.pywebview.api.get_excel_veri().then(function(veri) {
+                    if(veri) {
                         try {
-                            let data = JSON.parse(response);
-                            if(data.groups) globalGroups = data.groups;
-                            if(data.hidden) hiddenItems = data.hidden;
-                            if(data.apiKey) {
-                                let keyInput = document.getElementById('gemini-api-key');
-                                if(keyInput) keyInput.value = data.apiKey;
-                            }
-                        } catch(e) { console.warn("Ayar dosyası okunamadı."); }
+                            const gelenVeri = JSON.parse(veri);
+                            rawData.length = 0; // İçini tertemiz yapıyoruz
+                            gelenVeri.forEach(item => rawData.push(item)); // Veriyi sıfır hata ile dolduruyoruz
+                        } catch(e) {
+                            alert("Veri dönüştürme hatası: " + e.message);
+                        }
                     }
-                    grafikleriCiz();
-                }).catch(function() {
-                    grafikleriCiz(); // Ayar çekilemese bile çökme, grafiği çiz!
+
+                    // ADIM 2: Ayarları Çek
+                    window.pywebview.api.load_ui_settings().then(function(response) {
+                        if(response && response !== "{}") {
+                            try {
+                                let data = JSON.parse(response);
+                                if(data.groups) globalGroups = data.groups;
+                                if(data.hidden) hiddenItems = data.hidden;
+                                if(data.apiKey) {
+                                    let keyInput = document.getElementById('gemini-api-key');
+                                    if(keyInput) keyInput.value = data.apiKey;
+                                }
+                            } catch(e) { console.warn("Ayar okunamadı."); }
+                        }
+                        
+                        // ADIM 3: Veri hazır, ayarlar hazır. Grafikleri ve Huni Ayar Kutularını Çiz!
+                        grafikleriCiz();
+                    });
+
+                }).catch(function(err) {
+                    alert("Veri çekme işleminde köprü hatası: " + err);
+                    grafikleriCiz(); 
                 });
+                
             } else {
-                grafikleriCiz(); // Köprü kurulmamışsa bile verileri göster!
+                grafikleriCiz(); 
             }
         }
 
+        function grafikleriCiz() {
+            try {
+                if (typeof renderSettingsLists === "function") renderSettingsLists();
+                if (typeof initFilters === "function") initFilters();
+                if (typeof processData === "function") processData();
+                if (typeof updateDash === "function") updateDash();
+            } catch(err) {
+                alert("Grafikler çizilirken bir hata oluştu:\n" + err.message);
+            }
+        }
+
+        // Radar Sistemimiz
+        window.addEventListener('pywebviewready', sistemiAtesle);
+
+        window.addEventListener('DOMContentLoaded', function() {
+            let deneme = 0;
+            let radar = setInterval(function() {
+                deneme++;
+                if (window.pywebview && window.pywebview.api) {
+                    clearInterval(radar);
+                    sistemiAtesle();
+                } else if (deneme > 40) { 
+                    clearInterval(radar);
+                    sistemiAtesle();
+                }
+            }, 50);
+        });
         function grafikleriCiz() {
             try {
                 if (typeof renderSettingsLists === "function") renderSettingsLists();
