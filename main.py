@@ -5,7 +5,7 @@ import sys
 import base64
 import tkinter as tk
 from tkinter import filedialog, messagebox
-import webview  # YENİ EKLENDİ: Gerçek pencere ve köprü için
+import webview
 
 # --- YARDIMCI FONKSİYONLAR ---
 def resource_path(relative_path):
@@ -30,7 +30,6 @@ def get_image_data(filename):
 # --- HTML VE PYTHON KÖPRÜSÜ (API) ---
 class Api:
     def save_ui_settings(self, settings_json):
-        # Arayüz ayarlarını ui_ayarlar.json adlı dosyaya fiziksel olarak kaydeder
         try:
             with open("ui_ayarlar.json", "w", encoding="utf-8") as f:
                 f.write(settings_json)
@@ -39,7 +38,6 @@ class Api:
             return str(e)
 
     def load_ui_settings(self):
-        # Program açıldığında ayarları fiziksel dosyadan okur
         if os.path.exists("ui_ayarlar.json"):
             try:
                 with open("ui_ayarlar.json", "r", encoding="utf-8") as f:
@@ -80,13 +78,18 @@ def get_excel_file():
     )
     if file_path:
         save_config(file_path)
+        
+    root.destroy()  # <--- HATA ÖNLEYİCİ KRİTİK SATIR
     return file_path
 
 # --- ANA İŞLEM ---
 def main():
     file_path = get_excel_file()
     if not file_path:
+        root = tk.Tk()
+        root.withdraw()
         messagebox.showwarning("Uyarı", "Dosya seçilmedi, program kapatılıyor.")
+        root.destroy()
         sys.exit()
 
     try:
@@ -131,13 +134,15 @@ def main():
         with open("Satis_Raporu.html", "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        # ARTIK BROWSER'DA DEĞİL, UYGULAMA PENCERESİNDE AÇILIYOR!
-        api = Api() # Köprüyü kur
+        api = Api()
         webview.create_window('Satış Analiz Paneli', 'Satis_Raporu.html', js_api=api, width=1280, height=800)
         webview.start()
 
     except Exception as e:
+        root = tk.Tk()
+        root.withdraw()
         messagebox.showerror("Hata", f"Beklenmeyen bir hata oluştu:\n{str(e)}")
+        root.destroy()
 
 if __name__ == "__main__":
     main()
