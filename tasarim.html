@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yönetim Paneli - Ultimate Pro</title>
+    <title>Yönetim Paneli</title>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -404,7 +404,8 @@
     <script>
         // GLOBAL DEĞİŞKENLER
         let rawData = [[JSON_DATA]];
-        let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
+        let savedSettings = [[SETTINGS_DATA]] || {};
+        let globalGroups = (savedSettings.dashboardGroups) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
 
         // --- Huni Gruplarının Otomatik Olarak Ayarlara Eklenmesi ---
         if (!globalGroups["Huni Aşaması"]) {
@@ -415,7 +416,7 @@
             };
         }
 
-        let hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')) || [];
+        let hiddenItems = (savedSettings.hiddenItems) || [];
         let cleanData = [];
         let currentFilteredData = []; // Yapay Zeka için filtrelenmiş veriyi tutar
         const monthNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
@@ -476,7 +477,7 @@
         }
 
         async function callGemini(prompt, targetElementId) {
-            const apiKey = localStorage.getItem('geminiApiKey');
+            const apiKey = (savedSettings.geminiApiKey);
             const el = document.getElementById(targetElementId);
 
             if(!apiKey) {
@@ -977,18 +978,19 @@
         function openSettings() { 
             document.getElementById('settings-modal').style.display = 'flex'; 
             setCategory(activeCategory); 
-            document.getElementById('gemini-api-key').value = localStorage.getItem('geminiApiKey') || "";
+            document.getElementById('gemini-api-key').value = (savedSettings.geminiApiKey) || "";
         }
 
-        function saveAndCloseSettings() { 
-            localStorage.setItem('geminiApiKey', document.getElementById('gemini-api-key').value.trim());
-            localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); 
-            localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); 
+        function saveAndCloseSettings() {
+            savedSettings.geminiApiKey = document.getElementById('gemini-api-key').value.trim();
+            savedSettings.dashboardGroups = globalGroups;
+            savedSettings.hiddenItems = hiddenItems;
+            console.log("Settings updated:", savedSettings);
             document.getElementById('settings-modal').style.display='none'; 
             if(document.getElementById('dashboard-page').style.display==='block') { processData(); initFilters(); updateDash(); } 
         }
 
-        function discardAndCloseSettings() { globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')); hiddenItems = JSON.parse(localStorage.getItem('hiddenItems')); document.getElementById('settings-modal').style.display='none'; }
+        function discardAndCloseSettings() { globalGroups = (savedSettings.dashboardGroups); hiddenItems = (savedSettings.hiddenItems); document.getElementById('settings-modal').style.display='none'; }
 
         function setCategory(cat) { activeCategory = cat; renderSettingsLists(); document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active')); event.target.classList.add('active'); }
 
@@ -1055,8 +1057,8 @@
         function executeReset() {
             const inputVal = document.getElementById('reset-confirm-input').value.trim().toLowerCase();
             if (inputVal === "sıfırla" || inputVal === "sifirla") {
-                localStorage.removeItem('dashboardGroups');
-                localStorage.removeItem('hiddenItems');
+                
+                
                 globalGroups = { 
                     "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {},
                     "Huni Aşaması": { "1. İletişim / Filtreleme": [], "2. Ürün ve İhtiyaç": [], "3. Teklif ve Finansman": [] } 
