@@ -401,33 +401,41 @@
         </div>
     </div>
     <script>
-       window.addEventListener('pywebviewready', function() {
-            window.pywebview.api.load_ui_settings().then(function(response) {
-                if(response && response !== "{}") {
-                    try {
-                        let data = JSON.parse(response);
-                        
-                        if(data.groups) globalGroups = data.groups;
-                        if(data.hidden) hiddenItems = data.hidden;
-                        if(data.apiKey) {
-                            let keyInput = document.getElementById('gemini-api-key');
-                            if(keyInput) keyInput.value = data.apiKey;
+       // 1. AÇILIŞTA YÜKLEME KODU (Yarış Durumu Çözücü Eklendi)
+        window.addEventListener('pywebviewready', function() {
+            // Sisteme nefes aldırmak ve HTML kutularının fiziksel olarak ekrana 
+            // çizildiğinden emin olmak için 400 milisaniye bekletiyoruz.
+            setTimeout(function() {
+                window.pywebview.api.load_ui_settings().then(function(response) {
+                    if(response && response !== "{}") {
+                        try {
+                            let data = JSON.parse(response);
+                            if(data.groups) globalGroups = data.groups;
+                            if(data.hidden) hiddenItems = data.hidden;
+                            if(data.apiKey) {
+                                let keyInput = document.getElementById('gemini-api-key');
+                                if(keyInput) keyInput.value = data.apiKey;
+                            }
+                        } catch(e) {
+                            console.warn("Ayar dosyası ayrıştırılamadı, varsayılanlarla devam ediliyor.");
                         }
-                        
-                        // EKRANI YENİLE
+                    }
+                    
+                    // VERİ İŞLEME VE GRAFİK ÇİZME (Hata Yakalayıcı Zırh Eklendi)
+                    try {
                         if (typeof renderSettingsLists === "function") renderSettingsLists();
                         if (typeof initFilters === "function") initFilters();
                         if (typeof processData === "function") processData();
                         if (typeof updateDash === "function") updateDash();
-                    } catch(e) {
-                        alert("Ayar dosyası bozuk veya okunamadı: " + e.message);
+                    } catch(err) {
+                        alert("Veriler ekrana çizilirken bir pürüz çıktı!\nLütfen Excel dosyanızda bozuk veya tanımlanamayan özel karakterler olmadığından emin olun.\nSistem Hatası: " + err.message);
                     }
-                }
-            }).catch(function(err) {
-                alert("Python bağlantısı kurulamadı: " + err);
-            });
+                    
+                }).catch(function(err) {
+                    alert("Python bağlantısı kurulamadı: " + err);
+                });
+            }, 400); // Sihirli dokunuş: 400ms bekleme
         });
-       
         // GLOBAL DEĞİŞKENLER
         let rawData = [[JSON_DATA]];
         let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
