@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yönetim Paneli - Ultimate Pro</title>
+    <title>Yönetim Paneli</title>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -401,55 +401,40 @@
         </div>
     </div>
     <script>
-       // 1. AÇILIŞTA YÜKLEME KODU (AKILLI RADAR + GÜVENLİ VERİ ÇEKİMİ)
-        let sistemBasladi = false;
-
-        function sistemiAtesle() {
-            if(sistemBasladi) return;
-            sistemBasladi = true;
-
-            if(window.pywebview && window.pywebview.api) {
+       // 1. PYTHON'UN TETİKLEYECEĞİ ANA FONKSİYON (DIŞARIDAN ÇAĞRILIR)
+        function sistemiBaslat(b64_excel, b64_settings) {
+            try {
+                // Şifreli (Base64) verileri çözüyoruz
+                let excelJson = decodeURIComponent(escape(atob(b64_excel)));
+                let settingsJson = decodeURIComponent(escape(atob(b64_settings)));
                 
-                // ADIM 1: Excel verilerini Python API üzerinden güvenle çek!
-                window.pywebview.api.get_excel_veri().then(function(veri) {
-                    if(veri) {
-                        try {
-                            const gelenVeri = JSON.parse(veri);
-                            rawData.length = 0; // İçini tertemiz yapıyoruz
-                            gelenVeri.forEach(item => rawData.push(item)); // Veriyi sıfır hata ile dolduruyoruz
-                        } catch(e) {
-                            alert("Veri dönüştürme hatası: " + e.message);
-                        }
+                // 1. EXCEL VERİSİNİ YÜKLE
+                if (excelJson) {
+                    let veri = JSON.parse(excelJson);
+                    rawData.length = 0; // Eski veriyi temizle
+                    veri.forEach(item => rawData.push(item));
+                }
+
+                // 2. AYARLARI YÜKLE
+                if (settingsJson && settingsJson !== "{}") {
+                    let data = JSON.parse(settingsJson);
+                    if(data.groups) globalGroups = data.groups;
+                    if(data.hidden) hiddenItems = data.hidden;
+                    if(data.apiKey) {
+                        let keyInput = document.getElementById('gemini-api-key');
+                        if(keyInput) keyInput.value = data.apiKey;
                     }
+                }
 
-                    // ADIM 2: Ayarları Çek
-                    window.pywebview.api.load_ui_settings().then(function(response) {
-                        if(response && response !== "{}") {
-                            try {
-                                let data = JSON.parse(response);
-                                if(data.groups) globalGroups = data.groups;
-                                if(data.hidden) hiddenItems = data.hidden;
-                                if(data.apiKey) {
-                                    let keyInput = document.getElementById('gemini-api-key');
-                                    if(keyInput) keyInput.value = data.apiKey;
-                                }
-                            } catch(e) { console.warn("Ayar okunamadı."); }
-                        }
-                        
-                        // ADIM 3: Veri hazır, ayarlar hazır. Grafikleri ve Huni Ayar Kutularını Çiz!
-                        grafikleriCiz();
-                    });
+                // 3. HER ŞEY HAZIR, EKRANI ÇİZ!
+                grafikleriCiz();
 
-                }).catch(function(err) {
-                    alert("Veri çekme işleminde köprü hatası: " + err);
-                    grafikleriCiz(); 
-                });
-                
-            } else {
-                grafikleriCiz(); 
+            } catch(e) {
+                alert("Sistem Başlatma Hatası! Veriler çözülemedi: " + e.message);
             }
         }
 
+        // 2. ÇİZİM MOTORU (SADECE 1 TANE OLACAK)
         function grafikleriCiz() {
             try {
                 if (typeof renderSettingsLists === "function") renderSettingsLists();
@@ -460,58 +445,15 @@
                 alert("Grafikler çizilirken bir hata oluştu:\n" + err.message);
             }
         }
-
-        // Radar Sistemimiz
-        window.addEventListener('pywebviewready', sistemiAtesle);
-
-        window.addEventListener('DOMContentLoaded', function() {
-            let deneme = 0;
-            let radar = setInterval(function() {
-                deneme++;
-                if (window.pywebview && window.pywebview.api) {
-                    clearInterval(radar);
-                    sistemiAtesle();
-                } else if (deneme > 40) { 
-                    clearInterval(radar);
-                    sistemiAtesle();
-                }
-            }, 50);
-        });
-        function grafikleriCiz() {
-            try {
-                if (typeof renderSettingsLists === "function") renderSettingsLists();
-                if (typeof initFilters === "function") initFilters();
-                if (typeof processData === "function") processData();
-                if (typeof updateDash === "function") updateDash();
-            } catch(err) {
-                alert("Grafikler çizilirken bir hata oluştu:\n" + err.message);
-            }
-        }
-
-        // TAKTİK 1: Sistemin standart hazır olma sinyalini bekle
-        window.addEventListener('pywebviewready', sistemiAtesle);
-
-        // TAKTİK 2: RADAR (Sinyal gelmezse biz zorla arıyoruz)
-        window.addEventListener('DOMContentLoaded', function() {
-            let deneme = 0;
-            let radar = setInterval(function() {
-                deneme++;
-                // Eğer pywebview API yüklendiyse radarı kapat ve sistemi ateşle
-                if (window.pywebview && window.pywebview.api) {
-                    clearInterval(radar);
-                    sistemiAtesle();
-                } 
-                // 2 saniye boyunca köprü kurulamazsa sonsuza kadar bekleme, eldekiyle başlat!
-                else if (deneme > 40) { 
-                    clearInterval(radar);
-                    console.warn("Radar zaman aşımı, zorunlu başlatılıyor...");
-                    sistemiAtesle();
-                }
-            }, 50); // Her 50 milisaniyede bir saniyenin 20'de 1'i hızla kontrol et
-        });
-        // GLOBAL DEĞİŞKENLER
-        let rawData = [[JSON_DATA]];
-        let globalGroups = JSON.parse(localStorage.getItem('dashboardGroups')) || { "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {} };
+        // DEĞİŞKENLERİN TERTEMİZ BAŞLANGIÇ HALLERİ
+        let rawData = []; // Veriler artık açılışta Python'dan Base64 şırıngasıyla gelecek!
+        
+        let globalGroups = { 
+            "Model": {}, "Danışman Adı": {}, "Durum": {}, "Kayıp Nedeni": {}, "Lead Kaynağı": {},
+            "Huni Aşaması": { "1. İletişim / Filtreleme": [], "2. Ürün ve İhtiyaç": [], "3. Teklif ve Finansman": [] } 
+        }; // Ayarlar da yine Python'dan (ui_ayarlar.json) gelecek!
+        
+        let hiddenItems = [];
         
         // --- Huni Gruplarının Otomatik Olarak Ayarlara Eklenmesi ---
         if (!globalGroups["Huni Aşaması"]) {
