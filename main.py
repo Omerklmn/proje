@@ -3,11 +3,9 @@ import json
 import os
 import sys
 import base64
-import time
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import webview
-import tempfile
 import uuid
 
 def resource_path(relative_path):
@@ -34,13 +32,8 @@ def get_image_data(filename):
             pass
     return "https://via.placeholder.com/300x200?text=Gorsel+Yok"
 
+# API Sınıfı - HTML'den gelen kaydetme komutlarını dinler
 class Api:
-    def __init__(self, veri_json):
-        self.veri_json = veri_json
-
-    def get_excel_veri(self):
-        return self.veri_json
-
     def save_ui_settings(self, settings_json):
         try:
             path = get_real_path("ui_ayarlar.json")
@@ -49,16 +42,6 @@ class Api:
             return "OK"
         except Exception as e:
             return str(e)
-
-    def load_ui_settings(self):
-        path = get_real_path("ui_ayarlar.json")
-        if os.path.exists(path):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    return f.read()
-            except Exception:
-                return "{}"
-        return "{}"
 
 def get_excel_file():
     root = tk.Tk()
@@ -110,8 +93,7 @@ def main():
     try:
         df_raw = pd.read_excel(file_path)
         
-        # HOCAM İŞTE HAYAT KURTARAN DÜZELTME BURADA! 
-        # Senin Excel'indeki isimleri sol taraftaki sistem isimleriyle eşleştirdik.
+        # SÜTUN İSİMLERİ DÜZELTİLDİ
         required_cols = {
             'Tarih': 'Kapatılma Tarihi',
             'Model': 'Model',
@@ -122,7 +104,6 @@ def main():
         }
         
         df = pd.DataFrame()
-
         for col_code, col_excel in required_cols.items():
             if col_excel in df_raw.columns:
                 df[col_code] = df_raw[col_excel].astype(str)
@@ -140,17 +121,32 @@ def main():
         df = df.replace(['nan', 'None', '', 'NaT', 'null'], 'Belirtilmemiş')
         json_data = df.to_json(orient='records')
 
-        template_path = resource_path("tasarim.html")
+        # AYARLAR DOSYASINI OKU
+        ayarlar_path = get_real_path("ui_ayarlar.json")
+        settings_data = "{}"
+        if os.path.exists(ayarlar_path):
+            try:
+                with open(ayarlar_path, "r", encoding="utf-8") as f:
+                    settings_data = f.read()
+            except:
+                settings_data = "{}"
+
+        template_path = resource_path("Satis_Raporu.html")
         if not os.path.exists(template_path):
             root = tk.Tk()
             root.withdraw()
-            messagebox.showerror("Hata", "tasarim.html bulunamadı!")
+            messagebox.showerror("Hata", f"{template_path} bulunamadı!")
             root.destroy()
             sys.exit()
 
         with open(template_path, "r", encoding="utf-8") as f:
             html_content = f.read()
 
+        # PYTHON İLE VERİYİ VE AYARLARI HTML'İN İÇİNE GÖMÜYORUZ (Sıfır Hata Yöntemi)
+        html_content = html_content.replace("[[JSON_DATA]]", json_data)
+        html_content = html_content.replace("[[SETTINGS_DATA]]", settings_data)
+        
+        # Resimleri Göm
         html_content = html_content.replace("[[LOGO_SRC]]", get_image_data("logo.webp"))
         html_content = html_content.replace("[[GRAFIK_SRC]]", get_image_data("grafik_resmi.png"))
         html_content = html_content.replace("[[SIM_SRC]]", get_image_data("simulasyon_resmi.png"))
@@ -173,16 +169,8 @@ def main():
         with open(temp_file, "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        api = Api(json_data)
+        api = Api()
         window = webview.create_window('Satış Analiz Paneli', url=temp_file, js_api=api, width=1280, height=800)
-
-        def on_loaded():
-            time.sleep(0.3) 
-            excel_b64 = base64.b64encode(api.veri_json.encode('utf-8')).decode('utf-8')
-            ayarlar_b64 = base64.b64encode(api.load_ui_settings().encode('utf-8')).decode('utf-8')
-            window.evaluate_js(f"sistemiBaslat('{excel_b64}', '{ayarlar_b64}');")
-
-        window.events.loaded += on_loaded
         webview.start()
 
     except Exception as e:
