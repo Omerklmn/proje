@@ -109,14 +109,18 @@ def main():
 
     try:
         df_raw = pd.read_excel(file_path)
+        
+        # HOCAM İŞTE HAYAT KURTARAN DÜZELTME BURADA! 
+        # Senin Excel'indeki isimleri sol taraftaki sistem isimleriyle eşleştirdik.
         required_cols = {
-            'Tarih': 'Tarih',
+            'Tarih': 'Kapatılma Tarihi',
             'Model': 'Model',
             'Danışman Adı': 'Danışman Adı',
             'Durum': 'Durum',
-            'Kayıp Nedeni': 'Kayıp Nedeni',
+            'Kayıp Nedeni': 'Kayıp Satış Nedeni',
             'Lead Kaynağı': 'Lead Kaynağı'
         }
+        
         df = pd.DataFrame()
 
         for col_code, col_excel in required_cols.items():
@@ -147,7 +151,6 @@ def main():
         with open(template_path, "r", encoding="utf-8") as f:
             html_content = f.read()
 
-        # Resimleri gömüyoruz
         html_content = html_content.replace("[[LOGO_SRC]]", get_image_data("logo.webp"))
         html_content = html_content.replace("[[GRAFIK_SRC]]", get_image_data("grafik_resmi.png"))
         html_content = html_content.replace("[[SIM_SRC]]", get_image_data("simulasyon_resmi.png"))
@@ -173,9 +176,8 @@ def main():
         api = Api(json_data)
         window = webview.create_window('Satış Analiz Paneli', url=temp_file, js_api=api, width=1280, height=800)
 
-        # PYTHON EKRANIN YÜKLENMESİNİ BEKLER
         def on_loaded():
-            time.sleep(0.3) # JS'nin DOM'u hazırlaması için milisaniyelik bir esneklik payı
+            time.sleep(0.3) 
             excel_b64 = base64.b64encode(api.veri_json.encode('utf-8')).decode('utf-8')
             ayarlar_b64 = base64.b64encode(api.load_ui_settings().encode('utf-8')).decode('utf-8')
             window.evaluate_js(f"sistemiBaslat('{excel_b64}', '{ayarlar_b64}');")
