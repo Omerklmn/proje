@@ -6,6 +6,7 @@ import base64
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import webview
+import tempfile # <--- YENİ EKLENDİ (Geçici klasör için)
 
 # --- YARDIMCI FONKSİYONLAR ---
 def resource_path(relative_path):
@@ -122,11 +123,10 @@ def main():
 
         template_path = resource_path("tasarim.html")
         
-        # --- DEDEKTİF HATA YAKALAYICI (YENİ) ---
         if not os.path.exists(template_path):
             root = tk.Tk()
             root.withdraw()
-            messagebox.showerror("Kritik Dosya Eksik!", f"Program çalışmak için 'tasarim.html' dosyasına ihtiyaç duyuyor ancak bulamadı.\n\nLütfen GitHub deponuzdaki HTML dosyasının adının tam olarak 'tasarim.html' olduğundan emin olun (Örneğin 'tasarim (5).html' ise çalışmaz).")
+            messagebox.showerror("Kritik Dosya Eksik!", f"Program çalışmak için 'tasarim.html' dosyasına ihtiyaç duyuyor ancak bulamadı.\n\nLütfen GitHub deponuzdaki HTML dosyasının adının tam olarak 'tasarim.html' olduğundan emin olun.")
             root.destroy()
             sys.exit()
 
@@ -138,10 +138,20 @@ def main():
         html_content = html_content.replace("[[GRAFIK_SRC]]", get_image_data("grafik_resmi.png"))
         html_content = html_content.replace("[[SIM_SRC]]", get_image_data("simulasyon_resmi.png"))
 
-        # --- ARTIK FİZİKSEL DOSYA YOK, DİREKT RAM'DEN AÇIYORUZ (YENİ) ---
+        # --- ÇÖZÜM: GEÇİCİ KLASÖRE YAZMAK (%TEMP%) ---
+        # Tarayıcı güvenliğine takılmamak için dosyayı Windows'un geçici klasöründe oluşturup oradan okutuyoruz.
+        temp_dir = tempfile.gettempdir()
+        temp_file = os.path.join(temp_dir, "SatisAnaliz_Temp.html")
+
+        with open(temp_file, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
         api = Api()
-        webview.create_window('Satış Analiz Paneli', html=html_content, js_api=api, width=1280, height=800)
-        webview.start()
+        # html=html_content YERİNE url=temp_file parametresini kullanıyoruz
+        webview.create_window('Satış Analiz Paneli', url=temp_file, js_api=api, width=1280, height=800)
+        
+        # Hata ayıklama modunu açtık! Ekrana sağ tıklayıp hataları görebilirsin.
+        webview.start(debug=True)
 
     except Exception as e:
         root = tk.Tk()
