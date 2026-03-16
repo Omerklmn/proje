@@ -7,9 +7,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import webview
 import tempfile
-import uuid  # <--- YENİ EKLENDİ: Tarayıcı önbelleğini kırmak için!
+import uuid
 
-# --- YARDIMCI FONKSİYONLAR ---
 def resource_path(relative_path):
     try:
         base_path = sys._MEIPASS
@@ -34,11 +33,11 @@ def get_image_data(filename):
             pass
     return "https://via.placeholder.com/300x200?text=Gorsel+Yok"
 
-# --- HTML VE PYTHON KÖPRÜSÜ (API) ---
 class Api:
     def save_ui_settings(self, settings_json):
         try:
-            with open(get_real_path("ui_ayarlar.json"), "w", encoding="utf-8") as f:
+            path = get_real_path("ui_ayarlar.json")
+            with open(path, "w", encoding="utf-8") as f:
                 f.write(settings_json)
             return "OK"
         except Exception as e:
@@ -50,46 +49,49 @@ class Api:
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     return f.read()
-            except:
+            except Exception as e:
                 return "{}"
         return "{}"
-
-# --- EXCEL AYARLARI ---
-def load_config():
-    path = get_real_path("ayarlar.json")
-    if os.path.exists(path):
-        try:
-            with open(path, "r") as f:
-                return json.load(f)
-        except:
-            return {}
-    return {}
-
-def save_config(filepath):
-    try:
-        with open(get_real_path("ayarlar.json"), "w") as f:
-            json.dump({"last_file": filepath}, f)
-    except:
-        pass
 
 def get_excel_file():
     root = tk.Tk()
     root.withdraw()
-    config = load_config()
-    initial_dir = os.path.dirname(config.get("last_file", "")) if config.get("last_file") else "/"
     
+    config_path = get_real_path("ayarlar.json")
+    last_file = ""
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                config = json.load(f)
+                last_file = config.get("last_file", "")
+        except:
+            pass
+            
+    # ÇÖZÜM 1: Kayıtlı dosya varsa direkt sor ve kullan!
+    if last_file and os.path.exists(last_file):
+        filename = os.path.basename(last_file)
+        cevap = messagebox.askyesno("Kayıtlı Veri Bulundu", f"Önceki analizde şu dosya kullanılmış:\n\n{filename}\n\nBu dosya ile devam edilsin mi?\n(Farklı bir Excel seçmek için Hayır'a tıklayın)")
+        if cevap:
+            root.destroy()
+            return last_file
+            
+    initial_dir = os.path.dirname(last_file) if last_file else "/"
     file_path = filedialog.askopenfilename(
         title="Veri Dosyasını Seçin",
         initialdir=initial_dir,
         filetypes=[("Excel Dosyaları", "*.xlsx;*.xls")]
     )
+    
     if file_path:
-        save_config(file_path)
-        
+        try:
+            with open(config_path, "w") as f:
+                json.dump({"last_file": file_path}, f)
+        except:
+            pass
+            
     root.destroy()
     return file_path
 
-# --- ANA İŞLEM ---
 def main():
     file_path = get_excel_file()
     if not file_path:
@@ -128,11 +130,10 @@ def main():
         json_data = df.to_json(orient='records')
 
         template_path = resource_path("tasarim.html")
-        
         if not os.path.exists(template_path):
             root = tk.Tk()
             root.withdraw()
-            messagebox.showerror("Kritik Dosya Eksik!", f"Program çalışmak için 'tasarim.html' dosyasına ihtiyaç duyuyor ancak bulamadı.")
+            messagebox.showerror("Hata", "tasarim.html bulunamadı!")
             root.destroy()
             sys.exit()
 
@@ -144,10 +145,9 @@ def main():
         html_content = html_content.replace("[[GRAFIK_SRC]]", get_image_data("grafik_resmi.png"))
         html_content = html_content.replace("[[SIM_SRC]]", get_image_data("simulasyon_resmi.png"))
 
-        # --- ÇÖZÜM: HER SEFERİNDE BENZERSİZ DOSYA ADI (CACHE KIRICI) ---
         temp_dir = tempfile.gettempdir()
-        unique_id = uuid.uuid4().hex # Rastgele şifre üretir
-        temp_file = os.path.join(temp_dir, f"SatisAnaliz_Temp_{unique_id}.html")
+        unique_id = uuid.uuid4().hex
+        temp_file = os.path.join(temp_dir, f"SatisAnaliz_{unique_id}.html")
 
         with open(temp_file, "w", encoding="utf-8") as f:
             f.write(html_content)
@@ -159,7 +159,7 @@ def main():
     except Exception as e:
         root = tk.Tk()
         root.withdraw()
-        messagebox.showerror("Hata", f"Beklenmeyen bir hata oluştu:\n{str(e)}")
+        messagebox.showerror("Hata", f"Beklenmeyen bir hata:\n{str(e)}")
         root.destroy()
 
 if __name__ == "__main__":
