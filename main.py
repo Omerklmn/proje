@@ -126,7 +126,8 @@ def main():
                 if not found:
                     df[col_code] = 'Belirtilmemiş'
         
-        df = df.replace(['nan', 'None', '', 'NaT'], 'Belirtilmemiş')
+        df = df.fillna('Belirtilmemiş')
+        df = df.replace(['nan', 'None', '', 'NaT', 'null'], 'Belirtilmemiş')
         json_data = df.to_json(orient='records')
 
         template_path = resource_path("tasarim.html")
