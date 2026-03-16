@@ -173,7 +173,19 @@ def main():
 
         # JSON VERİSİNİ API'YE TESLİM EDİYORUZ
         api = Api(json_data)
-        webview.create_window('Satış Analiz Paneli', url=temp_file, js_api=api, width=1280, height=800)
+        window = webview.create_window('Satış Analiz Paneli', url=temp_file, js_api=api, width=1280, height=800)
+
+        # --- YENİ SİSTEM: PYTHON EKRANIN YÜKLENMESİNİ BEKLER VE VERİYİ ZORLA BASAR ---
+        def on_loaded():
+            import base64
+            # Verileri kriptolayarak (Base64) JS'ye gönderiyoruz (Karakter hatası sıfırlanır)
+            excel_b64 = base64.b64encode(api.veri_json.encode('utf-8')).decode('utf-8')
+            ayarlar_b64 = base64.b64encode(api.load_ui_settings().encode('utf-8')).decode('utf-8')
+            
+            # JS içindeki 'sistemiBaslat' fonksiyonunu dışarıdan tetikliyoruz
+            window.evaluate_js(f"sistemiBaslat('{excel_b64}', '{ayarlar_b64}');")
+
+        window.events.loaded += on_loaded
         webview.start()
 
     except Exception as e:
