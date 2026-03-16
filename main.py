@@ -6,7 +6,7 @@ import base64
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import webview
-import tempfile # <--- YENİ EKLENDİ (Geçici klasör için)
+import tempfile
 
 # --- YARDIMCI FONKSİYONLAR ---
 def resource_path(relative_path):
@@ -15,6 +15,12 @@ def resource_path(relative_path):
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
+def get_real_path(filename):
+    # EXE'nin çalıştığı GERÇEK klasörü bulur (Geçici TEMP klasörünü değil)
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.path.dirname(sys.executable), filename)
+    return os.path.abspath(filename)
 
 def get_image_data(filename):
     full_path = resource_path(filename)
@@ -32,37 +38,38 @@ def get_image_data(filename):
 class Api:
     def save_ui_settings(self, settings_json):
         try:
-            with open("ui_ayarlar.json", "w", encoding="utf-8") as f:
+            # Ayarları EXE'nin olduğu gerçek klasöre kaydet
+            with open(get_real_path("ui_ayarlar.json"), "w", encoding="utf-8") as f:
                 f.write(settings_json)
             return "OK"
         except Exception as e:
             return str(e)
 
     def load_ui_settings(self):
-        if os.path.exists("ui_ayarlar.json"):
+        path = get_real_path("ui_ayarlar.json")
+        if os.path.exists(path):
             try:
-                with open("ui_ayarlar.json", "r", encoding="utf-8") as f:
+                with open(path, "r", encoding="utf-8") as f:
                     return f.read()
             except:
                 return "{}"
         return "{}"
 
-# --- AYARLAR ---
-CONFIG_FILE = "ayarlar.json"
-
+# --- EXCEL AYARLARI ---
 def load_config():
-    if os.path.exists(CONFIG_FILE):
+    path = get_real_path("ayarlar.json")
+    if os.path.exists(path):
         try:
-            with open(CONFIG_FILE, "r") as f:
+            with open(path, "r") as f:
                 return json.load(f)
         except:
             return {}
     return {}
 
-def save_config(path):
+def save_config(filepath):
     try:
-        with open(CONFIG_FILE, "w") as f:
-            json.dump({"last_file": path}, f)
+        with open(get_real_path("ayarlar.json"), "w") as f:
+            json.dump({"last_file": filepath}, f)
     except:
         pass
 
@@ -138,8 +145,6 @@ def main():
         html_content = html_content.replace("[[GRAFIK_SRC]]", get_image_data("grafik_resmi.png"))
         html_content = html_content.replace("[[SIM_SRC]]", get_image_data("simulasyon_resmi.png"))
 
-        # --- ÇÖZÜM: GEÇİCİ KLASÖRE YAZMAK (%TEMP%) ---
-        # Tarayıcı güvenliğine takılmamak için dosyayı Windows'un geçici klasöründe oluşturup oradan okutuyoruz.
         temp_dir = tempfile.gettempdir()
         temp_file = os.path.join(temp_dir, "SatisAnaliz_Temp.html")
 
@@ -147,11 +152,8 @@ def main():
             f.write(html_content)
 
         api = Api()
-        # html=html_content YERİNE url=temp_file parametresini kullanıyoruz
         webview.create_window('Satış Analiz Paneli', url=temp_file, js_api=api, width=1280, height=800)
-        
-        # Hata ayıklama modunu açtık! Ekrana sağ tıklayıp hataları görebilirsin.
-        webview.start(debug=True)
+        webview.start()
 
     except Exception as e:
         root = tk.Tk()
