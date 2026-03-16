@@ -427,15 +427,13 @@
                 }
             });
         });
-        // --- MEVCUT KAYDET BUTONUNU GÜNCELLEME ---
-        // Kodundaki mevcut 'saveAndCloseSettings' fonksiyonunu bulup BUNUNLA DEĞİŞTİR:
         function saveAndCloseSettings() { 
             localStorage.setItem('geminiApiKey', document.getElementById('gemini-api-key').value.trim());
             localStorage.setItem('dashboardGroups', JSON.stringify(globalGroups)); 
             localStorage.setItem('hiddenItems', JSON.stringify(hiddenItems)); 
             
-            // Ayarları paketleyip Python'a (fiziksel dosyaya) yolla
-            if(window.pywebview) {
+            // Ayarları paketleyip Python'a yolla (ui_ayarlar.json'u oluşturan kısım burası!)
+            if(window.pywebview && window.pywebview.api) {
                 const ayarPaketi = { 
                     groups: globalGroups, 
                     hidden: hiddenItems, 
