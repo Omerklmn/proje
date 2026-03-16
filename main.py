@@ -79,7 +79,7 @@ def get_excel_file():
     if file_path:
         save_config(file_path)
         
-    root.destroy()  # <--- HATA ÖNLEYİCİ KRİTİK SATIR
+    root.destroy()
     return file_path
 
 # --- ANA İŞLEM ---
@@ -121,7 +121,14 @@ def main():
         json_data = df.to_json(orient='records')
 
         template_path = resource_path("tasarim.html")
-        if not os.path.exists(template_path): template_path = "tasarim.html"
+        
+        # --- DEDEKTİF HATA YAKALAYICI (YENİ) ---
+        if not os.path.exists(template_path):
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror("Kritik Dosya Eksik!", f"Program çalışmak için 'tasarim.html' dosyasına ihtiyaç duyuyor ancak bulamadı.\n\nLütfen GitHub deponuzdaki HTML dosyasının adının tam olarak 'tasarim.html' olduğundan emin olun (Örneğin 'tasarim (5).html' ise çalışmaz).")
+            root.destroy()
+            sys.exit()
 
         with open(template_path, "r", encoding="utf-8") as f:
             html_content = f.read()
@@ -131,11 +138,9 @@ def main():
         html_content = html_content.replace("[[GRAFIK_SRC]]", get_image_data("grafik_resmi.png"))
         html_content = html_content.replace("[[SIM_SRC]]", get_image_data("simulasyon_resmi.png"))
 
-        with open("Satis_Raporu.html", "w", encoding="utf-8") as f:
-            f.write(html_content)
-
+        # --- ARTIK FİZİKSEL DOSYA YOK, DİREKT RAM'DEN AÇIYORUZ (YENİ) ---
         api = Api()
-        webview.create_window('Satış Analiz Paneli', 'Satis_Raporu.html', js_api=api, width=1280, height=800)
+        webview.create_window('Satış Analiz Paneli', html=html_content, js_api=api, width=1280, height=800)
         webview.start()
 
     except Exception as e:
