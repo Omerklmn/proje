@@ -5,11 +5,6 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-# --- NODE.JS 24 GÜNCELLEMESİ (UYARI GİZLEYİCİ) ---
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-# ------------------------------------------------
-
 jobs:
   build:
     runs-on: windows-latest
@@ -22,22 +17,16 @@ jobs:
       with:
         python-version: "3.10"
 
-    - name: Kutuphaneleri Yukle (Garantili Yontem)
-      run: |
-        python -m pip install --upgrade pip
-        pip install pandas openpyxl pyinstaller packaging matplotlib
-
-    - name: Dosyalari Kontrol Et
-      run: |
-        dir
+    - name: Kutuphaneleri Yukle
+      run: pip install pandas openpyxl pyinstaller
 
     - name: EXE Olustur
       run: |
-        pyinstaller --noconsole --onefile --name SatisSimulasyonu --add-data "tasarim.html;." --add-data "logo.webp;." --add-data "grafik_resmi.png;." --add-data "simulasyon_resmi.png;." main.py
+        pyinstaller --noconsole --onedir --name SatisSimulasyonu --add-data "tasarim.html;." --add-data "logo.webp;." --add-data "grafik_resmi.png;." --add-data "simulasyon_resmi.png;." main.py
 
-    - name: Dosyayi Yukle (Artifact)
+    - name: Dosyayi Yukle
       uses: actions/upload-artifact@v4
       with:
         name: SatisSimulasyonu-EXE
-        path: dist/SatisSimulasyonu.exe
+        path: dist/SatisSimulasyonu/
         compression-level: 0
