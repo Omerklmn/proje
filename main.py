@@ -33,7 +33,14 @@ def get_image_data(filename):
             pass
     return "https://via.placeholder.com/300x200?text=Gorsel+Yok"
 
+# --- YENİ API: ARTIK VERİYİ DE BURADAN GÜVENLE GÖNDERİYORUZ ---
 class Api:
+    def __init__(self, veri_json):
+        self.veri_json = veri_json
+
+    def get_excel_veri(self):
+        return self.veri_json
+
     def save_ui_settings(self, settings_json):
         try:
             path = get_real_path("ui_ayarlar.json")
@@ -49,7 +56,7 @@ class Api:
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     return f.read()
-            except Exception as e:
+            except Exception:
                 return "{}"
         return "{}"
 
@@ -67,7 +74,6 @@ def get_excel_file():
         except:
             pass
             
-    # ÇÖZÜM 1: Kayıtlı dosya varsa direkt sor ve kullan!
     if last_file and os.path.exists(last_file):
         filename = os.path.basename(last_file)
         cevap = messagebox.askyesno("Kayıtlı Veri Bulundu", f"Önceki analizde şu dosya kullanılmış:\n\n{filename}\n\nBu dosya ile devam edilsin mi?\n(Farklı bir Excel seçmek için Hayır'a tıklayın)")
@@ -141,15 +147,14 @@ def main():
         with open(template_path, "r", encoding="utf-8") as f:
             html_content = f.read()
 
-        html_content = html_content.replace("[[JSON_DATA]]", json_data)
+        # HTML çökmelerini engellemek için veriyi boş bırakıyoruz (API'den çekeceğiz)
+        html_content = html_content.replace("[[JSON_DATA]]", "[]")
         html_content = html_content.replace("[[LOGO_SRC]]", get_image_data("logo.webp"))
         html_content = html_content.replace("[[GRAFIK_SRC]]", get_image_data("grafik_resmi.png"))
         html_content = html_content.replace("[[SIM_SRC]]", get_image_data("simulasyon_resmi.png"))
 
-        # --- RESİM VE ÖNBELLEK ÇÖZÜMÜ ---
         gercek_klasor = get_real_path("")
         
-        # 1. Eski açılışlardan kalan gizli HTML dosyalarını temizle (Klasör çöp dolmasın)
         try:
             for dosya_adi in os.listdir(gercek_klasor):
                 if dosya_adi.startswith("SatisAnaliz_Gizli_") and dosya_adi.endswith(".html"):
@@ -160,14 +165,14 @@ def main():
         except:
             pass
 
-        # 2. Yeni dosyayı TEMP'e değil, direkt resimlerin ve EXE'nin yanına oluştur!
         unique_id = uuid.uuid4().hex
         temp_file = os.path.join(gercek_klasor, f"SatisAnaliz_Gizli_{unique_id}.html")
 
         with open(temp_file, "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        api = Api()
+        # JSON VERİSİNİ API'YE TESLİM EDİYORUZ
+        api = Api(json_data)
         webview.create_window('Satış Analiz Paneli', url=temp_file, js_api=api, width=1280, height=800)
         webview.start()
 
