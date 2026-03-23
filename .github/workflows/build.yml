@@ -29,9 +29,11 @@ jobs:
           --add-data "simulasyon_resmi.png;." `
           --hidden-import xgboost `
           --hidden-import xgboost.sklearn `
-          --collect-all xgboost `
-          --hidden-import sklearn `
-          --collect-all sklearn `
+          --hidden-import xgboost.core `
+          --collect-binaries xgboost `
+          --hidden-import sklearn.linear_model `
+          --hidden-import sklearn.preprocessing `
+          --hidden-import sklearn.utils `
           main.py
 
     - name: Dosyayi Yukle
