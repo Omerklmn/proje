@@ -10,7 +10,8 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Depoyu Klonla
+      uses: actions/checkout@v4
 
     - name: Python Kurulumu
       uses: actions/setup-python@v5
@@ -18,9 +19,11 @@ jobs:
         python-version: "3.10"
 
     - name: Kutuphaneleri Yukle
-      run: pip install pandas openpyxl pyinstaller scikit-learn xgboost numpy
+      # Olası gizli bağımlılık sorunlarını önlemek için scipy'yi de ekledim
+      run: pip install pandas openpyxl pyinstaller scikit-learn xgboost numpy scipy
 
     - name: EXE Olustur
+      # Önceki hatayı çözen --collect-data ve --copy-metadata satırları eklendi
       run: |
         pyinstaller --noconsole --onedir --name SatisSimulasyonu `
           --add-data "tasarim.html;." `
@@ -31,6 +34,8 @@ jobs:
           --hidden-import xgboost.sklearn `
           --hidden-import xgboost.core `
           --collect-binaries xgboost `
+          --collect-data xgboost `
+          --copy-metadata xgboost `
           --hidden-import sklearn.linear_model `
           --hidden-import sklearn.preprocessing `
           --hidden-import sklearn.utils `
