@@ -22,7 +22,17 @@ jobs:
 
     - name: EXE Olustur
       run: |
-        pyinstaller --noconsole --onedir --name SatisSimulasyonu --add-data "tasarim.html;." --add-data "logo.webp;." --add-data "grafik_resmi.png;." --add-data "simulasyon_resmi.png;." main.py
+        pyinstaller --noconsole --onedir --name SatisSimulasyonu `
+          --add-data "tasarim.html;." `
+          --add-data "logo.webp;." `
+          --add-data "grafik_resmi.png;." `
+          --add-data "simulasyon_resmi.png;." `
+          --hidden-import xgboost `
+          --hidden-import xgboost.sklearn `
+          --collect-all xgboost `
+          --hidden-import sklearn `
+          --collect-all sklearn `
+          main.py
 
     - name: Dosyayi Yukle
       uses: actions/upload-artifact@v4
