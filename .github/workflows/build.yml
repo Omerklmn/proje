@@ -19,7 +19,7 @@ jobs:
         python-version: "3.10"
 
     - name: Kutuphaneleri Yukle
-      run: pip install pandas openpyxl pyinstaller scikit-learn xgboost numpy scipy
+      run: pip install pandas openpyxl pyinstaller
 
     - name: EXE Olustur
       run: |
@@ -28,15 +28,6 @@ jobs:
           --add-data "logo.webp;." `
           --add-data "grafik_resmi.png;." `
           --add-data "simulasyon_resmi.png;." `
-          --hidden-import xgboost `
-          --hidden-import xgboost.sklearn `
-          --hidden-import xgboost.core `
-          --collect-binaries xgboost `
-          --collect-data xgboost `
-          --copy-metadata xgboost `
-          --hidden-import sklearn.linear_model `
-          --hidden-import sklearn.preprocessing `
-          --hidden-import sklearn.utils `
           main.py
 
     - name: Dosyayi Yukle
